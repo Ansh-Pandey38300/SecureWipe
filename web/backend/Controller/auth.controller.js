@@ -27,5 +27,12 @@ module.exports.loginUser = asyncHandler(async (req, res, next) => {
     });
 });
 
+module.exports.getMe = (req,res) => {
+    res.status(200).json({
+        success: true,
+        user: req.user
+    });
+}
+
 
 
