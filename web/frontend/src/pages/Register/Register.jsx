@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { registerUser } from "../../services/authService.js";
 import { Link } from "react-router-dom";
+import styles from "./register.module.css";
 
 function Register() {
     const [name, setName] = useState("");
@@ -46,7 +47,7 @@ function Register() {
 
         } catch (error) {
             console.error("Registration failed:", error);
-            setError("Unable to connect to the server");
+            setError("Unable to connect to the server, please try again later");
         }
         finally {
             setLoading(false);
@@ -54,55 +55,94 @@ function Register() {
     };
 
 
-
     return (
-        <div>
-            <h1>Register</h1>
+        <div className={styles.registerPage} id="register-page">
+            <div className={styles.registerContainer} id="register-container">
 
-            {message && <p>{message}</p>}
+                <h1 className={styles.registerTitle} id="register-title">
+                    Register
+                </h1>
 
-            {error && <p>{error}</p>}
+                {message && (
+                    <p className={styles.message} id="register-message">
+                        {message}
+                    </p>
+                )}
 
-            <form onSubmit={handleSubmit}></form>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Name</label>
-                    <input
-                        type="text"
-                        placeholder="Enter your name"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                    />
-                </div>
+                {error && (
+                    <p className={styles.error} id="register-error">
+                        {error}
+                    </p>
+                )}
 
-                <div>
-                    <label>Email</label>
-                    <input
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                    />
-                </div>
+                <form onSubmit={handleSubmit}></form>
 
-                <div>
-                    <label>Password</label>
-                    <input
-                        type="password"
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                    />
-                </div>
+                <form
+                    onSubmit={handleSubmit}
+                    className={styles.registerForm}
+                    id="register-form"
+                >
+                    <div className={styles.formGroup} id="name-group">
+                        <label className={styles.formLabel}>Name</label>
+                        <input
+                            className={styles.formInput}
+                            id="name"
+                            type="text"
+                            placeholder="Enter your name"
+                            value={name}
+                            onChange={(event) => setName(event.target.value)}
+                            required
+                        />
+                    </div>
 
-                <button type="submit" disabled={loading}>
-                    {loading ? "Registering..." : "Register"}
-                </button>
-            </form>
-            <p>
-                Already have an account?{" "}
-                <Link to="/login">Login</Link>
-            </p>
+                    <div className={styles.formGroup} id="email-group">
+                        <label className={styles.formLabel}>Email</label>
+                        <input
+                            className={styles.formInput}
+                            id="email"
+                            type="email"
+                            placeholder="Enter your email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className={styles.formGroup} id="password-group">
+                        <label className={styles.formLabel}>Password</label>
+                        <input
+                            className={styles.formInput}
+                            id="password"
+                            type="password"
+                            placeholder="Enter your password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <button
+                        className={styles.registerButton}
+                        id="register-button"
+                        type="submit"
+                        disabled={loading}
+                    >
+                        {loading ? "Registering..." : "Register"}
+                    </button>
+                </form>
+
+                <p className={styles.loginText} id="login-text">
+                    Already have an account?{" "}
+                    <Link
+                        className={styles.loginLink}
+                        id="login-link"
+                        to="/login"
+                    >
+                        Login
+                    </Link>
+                </p>
+
+            </div>
         </div>
     );
 }

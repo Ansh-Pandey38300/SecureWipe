@@ -1,7 +1,6 @@
 import API_BASE_URL from "./api";
 
 export const registerUser = async (userData) => {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
   const response = await fetch(
     `${API_BASE_URL}/api/auth/register`,
     {
@@ -37,6 +36,10 @@ export const loginUser = async (loginData) => {
   );
 
   const data = await response.json();
-
+    if (!response.ok) {
+        throw new Error(
+            data.error?.message || "Login failed"
+        );
+    }
   return data;
 };
