@@ -1,11 +1,16 @@
-import React from 'react'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login/Login.jsx";
+import Register from "./pages/Register/Register.jsx";
 
 function App() {
   return (
-    <div>
-      <h1>fronend created</h1>
-    </div>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
