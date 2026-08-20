@@ -1,0 +1,42 @@
+import API_BASE_URL from "./api";
+
+export const registerUser = async (userData) => {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  const response = await fetch(
+    `${API_BASE_URL}/api/auth/register`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.error?.message || "Registration failed"
+    );
+  }
+
+  return data;
+};
+
+export const loginUser = async (loginData) => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/auth/login`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(loginData),
+    }
+  );
+
+  const data = await response.json();
+
+  return data;
+};
