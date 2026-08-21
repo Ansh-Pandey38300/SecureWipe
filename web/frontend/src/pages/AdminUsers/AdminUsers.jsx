@@ -84,6 +84,7 @@ const AdminUsers = () => {
                         className="w-full max-w-md rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
                     />
                 </div>
+
                 {filteredUsers.length === 0 ? (
                     <div className="p-6">
                         <p className="text-sm text-gray-500">
@@ -141,43 +142,15 @@ const AdminUsers = () => {
                                         <td className="px-6 py-4 text-sm">
                                             <button
                                                 type="button"
-                                                disabled={updatingRole || selectedRole === selectedUser.role}
-                                                onClick={async () => {
-                                                    setUpdatingRole(true);
+                                                disabled={updatingRole}
+                                                onClick={() => {
+                                                    setSelectedUser(user);
+                                                    setSelectedRole(user.role);
                                                     setRoleMessage("");
-
-                                                    try {
-                                                        const data = await updateUserRole(
-                                                            selectedUser._id,
-                                                            selectedRole
-                                                        );
-
-                                                        setUsers((currentUsers) =>
-                                                            currentUsers.map((user) =>
-                                                                user._id === selectedUser._id
-                                                                    ? {
-                                                                        ...user,
-                                                                        ...data.data,
-                                                                    }
-                                                                    : user
-                                                            )
-                                                        );
-
-                                                        setSelectedUser(null);
-                                                        setSelectedRole("");
-                                                    } catch (error) {
-                                                        console.error("Unable to update user role:", error);
-
-                                                        setRoleMessage(
-                                                            error.message || "Unable to update user role."
-                                                        );
-                                                    } finally {
-                                                        setUpdatingRole(false);
-                                                    }
                                                 }}
                                                 className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                                {updatingRole ? "Updating..." : "Update Role"}
+                                                Change Role
                                             </button>
                                         </td>
                                     </tr>
@@ -187,6 +160,7 @@ const AdminUsers = () => {
                     </div>
                 )}
             </div>
+
             {selectedUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
@@ -272,8 +246,53 @@ const AdminUsers = () => {
 
                                 <button
                                     type="button"
-                                    disabled={updatingRole}
-                                    className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+                                    disabled={
+                                        updatingRole ||
+                                        !selectedUser ||
+                                        selectedRole === selectedUser.role
+                                    }
+                                    onClick={async () => {
+                                        if (!selectedUser) {
+                                            return;
+                                        }
+
+                                        setUpdatingRole(true);
+                                        setRoleMessage("");
+
+                                        try {
+                                            const data = await updateUserRole(
+                                                selectedUser._id,
+                                                selectedRole
+                                            );
+
+                                            setUsers((currentUsers) =>
+                                                currentUsers.map((user) =>
+                                                    user._id === selectedUser._id
+                                                        ? {
+                                                              ...user,
+                                                              ...data.data,
+                                                          }
+                                                        : user
+                                                )
+                                            );
+
+                                            setSelectedUser(null);
+                                            setSelectedRole("");
+                                        } catch (error) {
+                                            console.error(
+                                                "Unable to update user role:",
+                                                error
+                                            );
+
+                                            setRoleMessage(
+                                                error.message ||
+                                                    "Unable to update user role."
+                                            );
+                                        } finally {
+                                            setUpdatingRole(false);
+                                        }
+                                    }}
+                                    className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {updatingRole
                                         ? "Updating..."
@@ -285,8 +304,6 @@ const AdminUsers = () => {
                 </div>
             )}
         </div>
-
-
     );
 };
 
