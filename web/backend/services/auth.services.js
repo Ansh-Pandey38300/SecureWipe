@@ -24,6 +24,8 @@ const registerUser = async ({ name, email, password }) => {
 
 const loginUser = async ({ email, password }) => {
 
+    email = email.toLowerCase().trim();
+
     const user = await User
         .findOne({ email })
         .select("+passwordHash");
@@ -49,8 +51,19 @@ const loginUser = async ({ email, password }) => {
 
     await user.save();
 
-    return generateToken(user);
-};
+    const token = generateToken(user);
+
+    return {
+        token,
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            workstationCenter: user.workstationCenter
+        }
+    };
+}
 
 module.exports = {
     registerUser,

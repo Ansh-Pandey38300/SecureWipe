@@ -15,7 +15,7 @@ module.exports.loginUser = asyncHandler(async (req, res, next) => {
     console.log("login");
     const { email, password } = req.body;
 
-    const token = await loginUser({
+    const result = await loginUser({
         email,
         password
     });
@@ -23,11 +23,12 @@ module.exports.loginUser = asyncHandler(async (req, res, next) => {
     res.status(200).json({
         success: true,
         message: "User logged in successfully",
-        token
+        token: result.token,
+        user: result.user
     });
 });
 
-module.exports.getMe = (req,res) => {
+module.exports.getMe = (req, res) => {
     res.status(200).json({
         success: true,
         user: req.user
