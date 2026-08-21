@@ -1,147 +1,161 @@
-import React, { useState } from "react";
-import { registerUser } from "../../services/authService.js";
-import { Link } from "react-router-dom";
-import styles from "./register.module.css";
+import { useState } from "react";
+import {
+    Link,
+    useNavigate,
+} from "react-router-dom";
+
+import toast from "react-hot-toast";
+
+import { registerUser } from "../../services/authService";
 
 function Register() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [message, setMessage] = useState("");
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    //   const handleSubmit = (event) => {
-    //     event.preventDefault();
-
-    //     console.log("Name:", name);
-    //     console.log("Email:", email);
-    //     console.log("Password:", password);
-    //   };
+    const navigate = useNavigate();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+
         setLoading(true);
 
-        setMessage("");
-        setError("");
-
-        const userData = {
-            name,
-            email,
-            password,
-        };
-
-        console.log("Data being sent:", userData);
-
         try {
-            const data = await registerUser(userData);
+            const response =
+                await registerUser({
+                    name,
+                    email,
+                    password,
+                });
 
-            console.log("Backend response:", data);
+            toast.success(
+                response.message ||
+                "Registration successful"
+            );
 
-            if (data.success) {
-                setMessage(data.message);
-            } else {
-                setError(data.error?.message || "Registration failed");
-            }
+            setName("");
+            setEmail("");
+            setPassword("");
 
+            navigate("/login");
         } catch (error) {
-            console.error("Registration failed:", error);
-            setError("Unable to connect to the server, please try again later");
-        }
-        finally {
+            toast.error(
+                error.message ||
+                "Registration failed"
+            );
+        } finally {
             setLoading(false);
         }
     };
 
-
     return (
-        <div className={styles.registerPage} id="register-page">
-            <div className={styles.registerContainer} id="register-container">
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 px-4 py-8">
+            <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-md">
+                <div className="mb-7 text-center">
+                    <h1 className="text-3xl font-bold text-slate-900">
+                        Register
+                    </h1>
 
-                <h1 className={styles.registerTitle} id="register-title">
-                    Register
-                </h1>
-
-                {message && (
-                    <p className={styles.message} id="register-message">
-                        {message}
+                    <p className="mt-2 text-sm text-slate-500">
+                        Create your SecureWipe account
                     </p>
-                )}
-
-                {error && (
-                    <p className={styles.error} id="register-error">
-                        {error}
-                    </p>
-                )}
-
-                <form onSubmit={handleSubmit}></form>
+                </div>
 
                 <form
                     onSubmit={handleSubmit}
-                    className={styles.registerForm}
-                    id="register-form"
+                    className="space-y-5"
                 >
-                    <div className={styles.formGroup} id="name-group">
-                        <label className={styles.formLabel}>Name</label>
+                    <div className="space-y-2">
+                        <label
+                            htmlFor="name"
+                            className="block text-sm font-medium text-slate-700"
+                        >
+                            Name
+                        </label>
+
                         <input
-                            className={styles.formInput}
                             id="name"
                             type="text"
-                            placeholder="Enter your name"
                             value={name}
-                            onChange={(event) => setName(event.target.value)}
+                            onChange={(event) =>
+                                setName(
+                                    event.target.value
+                                )
+                            }
+                            placeholder="Enter your name"
                             required
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                         />
                     </div>
 
-                    <div className={styles.formGroup} id="email-group">
-                        <label className={styles.formLabel}>Email</label>
+                    <div className="space-y-2">
+                        <label
+                            htmlFor="email"
+                            className="block text-sm font-medium text-slate-700"
+                        >
+                            Email
+                        </label>
+
                         <input
-                            className={styles.formInput}
                             id="email"
                             type="email"
-                            placeholder="Enter your email"
                             value={email}
-                            onChange={(event) => setEmail(event.target.value)}
+                            onChange={(event) =>
+                                setEmail(
+                                    event.target.value
+                                )
+                            }
+                            placeholder="Enter your email"
                             required
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                         />
                     </div>
 
-                    <div className={styles.formGroup} id="password-group">
-                        <label className={styles.formLabel}>Password</label>
+                    <div className="space-y-2">
+                        <label
+                            htmlFor="password"
+                            className="block text-sm font-medium text-slate-700"
+                        >
+                            Password
+                        </label>
+
                         <input
-                            className={styles.formInput}
                             id="password"
                             type="password"
-                            placeholder="Enter your password"
                             value={password}
-                            onChange={(event) => setPassword(event.target.value)}
+                            onChange={(event) =>
+                                setPassword(
+                                    event.target.value
+                                )
+                            }
+                            placeholder="Enter your password"
                             required
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                         />
                     </div>
 
                     <button
-                        className={styles.registerButton}
-                        id="register-button"
                         type="submit"
                         disabled={loading}
+                        className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {loading ? "Registering..." : "Register"}
+                        {loading
+                            ? "Registering..."
+                            : "Register"}
                     </button>
                 </form>
 
-                <p className={styles.loginText} id="login-text">
+                <p className="mt-6 text-center text-sm text-slate-500">
                     Already have an account?{" "}
+
                     <Link
-                        className={styles.loginLink}
-                        id="login-link"
                         to="/login"
+                        className="font-semibold text-indigo-600 hover:text-indigo-700"
                     >
                         Login
                     </Link>
                 </p>
-
             </div>
         </div>
     );
