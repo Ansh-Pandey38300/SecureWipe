@@ -1,7 +1,9 @@
 {
+  
   "dependencies": {
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
+    "crypto": "^1.0.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "global": "^4.4.0",

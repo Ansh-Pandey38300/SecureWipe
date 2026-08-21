@@ -21,4 +21,12 @@ router.get(
         });
     }
 );
+
+router.get("/admin-test", Authenticate, Authorize("ADMIN"), (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "You are authorizied as Admin",
+        user: req.user
+    });
+})
 module.exports = router;
