@@ -1,5 +1,5 @@
 const asyncHandler = require("../utils/asyncHandler");
-const { createWorkstationCenter } = require("../services/workstationCenter.services");
+const { createWorkstationCenter, getWorkstationCenterById } = require("../services/workstationCenter.services");
 
 module.exports.createWorkStationCenter = asyncHandler(async (req, res, next) => {
     const workstationCenter = await createWorkstationCenter(req.body);
@@ -8,8 +8,18 @@ module.exports.createWorkStationCenter = asyncHandler(async (req, res, next) => 
         success: true,
         data: workstationCenter,
     });
+
 });
 
 module.exports.getWorkstationCenterById = asyncHandler(async (req, res, next) => {
-   
+    const { id } = req.params;
+
+    const workstationCenter = await getWorkstationCenterById(id, req.user);
+
+    res.status(200).json({
+        success: true,
+        message: "Workstation center fetched successfully",
+        data: workstationCenter
+    });
+
 });
