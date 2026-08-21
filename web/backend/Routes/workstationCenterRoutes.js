@@ -5,6 +5,7 @@ const { Authenticate } = require("../middlewares/auth.middleware");
 const { Authorize } = require("../middlewares/authorize.middleware");
 
 router.post("/", Authenticate, Authorize("ADMIN"), workstationController.createWorkStationCenter);
-router.get("/:id", Authenticate,workstationController.getWorkstationCenterById);
+router.get("/:id", Authenticate, workstationController.getWorkstationCenterById);
+router.post("/:id/employees", Authenticate, Authorize("ADMIN", "WORKSTATION_HEAD"), workstationController.assignEmployees);
 
 module.exports = router;

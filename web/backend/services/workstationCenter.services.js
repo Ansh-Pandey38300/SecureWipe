@@ -36,10 +36,12 @@ const createWorkstationCenter = async (data) => {
 
 const getWorkstationCenterById = async (centerId, user) => {
 
-    const center = await WorkstationCenter.findOne({ centerId: centerId }).populate(
-        "head",
-        "name email"
-    );
+    const center = await WorkstationCenter.findOne({ centerId: centerId })
+        .populate(
+            "head",
+            "name email"
+        )
+        .populate("employees", "name email role status");
 
     if (!center) {
         throw new AppError("Workstation center does not exist", 404);
@@ -92,12 +94,108 @@ const getWorkstationCenterById = async (centerId, user) => {
         "You are not authorized to access this workstation center",
         403
     );
-
-
-
 }
+
+const assignEmployees = async (centerId, employeeIds, currentUser) => {
+
+    // 1. employeeIds array check
+    if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+        throw new AppError("At least one employee is required", 400);
+    }
+
+    // 2. Find workstation center
+    const center = await WorkstationCenter.findOne({ centerId });
+
+    if (!center) {
+        throw new AppError("Workstation center not found", 404);
+    }
+
+    // 3. If requester is WORKSTATION_HEAD,
+    //    he can only assign employees to his own center
+    if (currentUser.role === "WORKSTATION_HEAD") {
+
+        if (center.head.toString() !== currentUser._id.toString()) {
+            throw new AppError(
+                "You can only assign employees to your own center",
+                403
+            );
+        }
+    }
+
+    // 4. Remove duplicate employee IDs
+    const uniqueEmployeeIds = [...new Set(employeeIds.map(id => id.toString()))];
+
+    // 5. Find all selected users
+    const employees = await User.find({
+        _id: { $in: uniqueEmployeeIds }
+    });
+
+    // 6. Check all employees exist
+    if (employees.length !== uniqueEmployeeIds.length) {
+        throw new AppError(
+            "One or more employees were not found",
+            404
+        );
+    }
+
+    // 7. Make sure all users are workstation employees
+    const invalidEmployee = employees.find(
+        user => user.role !== "WORKSTATION_EMPLOYEE"
+    );
+
+    if (invalidEmployee) {
+        throw new AppError(
+            "Only workstation employees can be assigned",
+            400
+        );
+    }
+
+    // 8. Check whether active or inactive
+    const inactiveEmployee = employees.find(
+        user => user.status !== "ACTIVE"
+    );
+
+    if (inactiveEmployee) {
+        throw new AppError(
+            "One or more employees are inactive",
+            400
+        );
+    }
+
+    // 9. Check whether any employee is already assigned
+    const alreadyAssigned = employees.filter(
+        employee => employee.workstationCenter
+    );
+
+    if (alreadyAssigned.length > 0) {
+        throw new AppError(
+            "One or more employees are already assigned to a workstation center",
+            400
+        );
+    }
+
+    // 10. Add employees to center
+    center.employees.push(...uniqueEmployeeIds);
+
+    await center.save();
+
+    // 11. Update each employee's workstationCenter
+    await User.updateMany(
+        {
+            _id: { $in: uniqueEmployeeIds }
+        },
+        {
+            $set: {
+                workstationCenter: center._id
+            }
+        }
+    );
+
+    return center;
+};
 
 module.exports = {
     createWorkstationCenter,
     getWorkstationCenterById,
+    assignEmployees
 }
