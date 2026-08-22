@@ -25,9 +25,9 @@ module.exports.getWorkstationCenterById = asyncHandler(async (req, res, next) =>
 });
 
 module.exports.assignEmployees = asyncHandler(async (req, res, next) => {
-    const { centerId } = req.params;
+    const { id } = req.params;
     const { employeesIds } = req.body;
-    const center = await assignEmployees(centerId,employeesIds,req.user);
+    const center = await assignEmployees(id, employeesIds, req.user);
     res.status(200).json({
         success: true,
         message: "Employee assigned successfully",
