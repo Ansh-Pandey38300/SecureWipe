@@ -12,3 +12,10 @@ export const getWorkstationCenter = async (centerId) => {
         method: "GET",
     });
 };
+
+export const assignEmployeesToCenter = async (centerId, employeesIds) => {
+    return apiRequest(`/api/workstation-centers/${centerId}/employees`, {
+        method: "POST",
+        body: JSON.stringify({ employeesIds }),
+    });
+};

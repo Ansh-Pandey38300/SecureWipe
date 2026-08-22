@@ -1,68 +1,50 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import {
-    getWorkstationCenter,
-} from "../../../services/workstationCenterService";
+import { getWorkstationCenter } from "../../../services/workstationCenterService";
 
 import Loading from "../../../components/common/Loading";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import PageHeader from "../../../components/ui/PageHeader";
+import WorkstationCenterDetails from "../../../components/workstation/WorkstationCenterDetails";
+import AssignEmployeesPanel from "../../../components/workstation/AssignEmployeesPanel";
 
 function WorkstationCenter() {
     const { centerId } = useParams();
 
-    const [center, setCenter] =
-        useState(null);
+    const [center, setCenter] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
-    const [loading, setLoading] =
-        useState(true);
+    const loadCenter = useCallback(async () => {
+        setLoading(true);
+        setError("");
 
-    const [error, setError] =
-        useState("");
-
-    useEffect(() => {
-        const loadCenter = async () => {
-            setLoading(true);
-            setError("");
-
-            try {
-                const response =
-                    await getWorkstationCenter(
-                        centerId
-                    );
-
-                setCenter(
-                    response.center ||
-                    response.data ||
-                    response
-                );
-            } catch (error) {
-                setError(
-                    error.message ||
-                    "Unable to load workstation center."
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (centerId) {
-            loadCenter();
+        try {
+            const response = await getWorkstationCenter(centerId);
+            setCenter(response.data || response.center || response);
+        } catch (error) {
+            setError(
+                error.message || "Unable to load workstation center."
+            );
+        } finally {
+            setLoading(false);
         }
     }, [centerId]);
 
+    useEffect(() => {
+        if (centerId) {
+            loadCenter();
+        }
+    }, [centerId, loadCenter]);
+
     if (loading) {
-        return (
-            <Loading message="Loading workstation center..." />
-        );
+        return <Loading message="Loading workstation center..." />;
     }
 
     if (error) {
-        return (
-            <ErrorMessage message={error} />
-        );
+        return <ErrorMessage message={error} />;
     }
 
     if (!center) {
@@ -78,52 +60,21 @@ function WorkstationCenter() {
         <div className="space-y-6">
             <PageHeader
                 title={center.name || "Workstation Center"}
-                description="Workstation center details."
+                description="Your workstation center details."
             />
 
+            <WorkstationCenterDetails center={center} />
+
             <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <dl className="space-y-4">
-                    {center.name && (
-                        <div>
-                            <dt className="text-xs font-medium uppercase text-slate-400">
-                                Name
-                            </dt>
+                <h2 className="mb-4 text-base font-semibold text-slate-900">
+                    Assign Employees
+                </h2>
 
-                            <dd className="mt-1 text-sm text-slate-800">
-                                {center.name}
-                            </dd>
-                        </div>
-                    )}
-
-                    {center.location && (
-                        <div>
-                            <dt className="text-xs font-medium uppercase text-slate-400">
-                                Location
-                            </dt>
-
-                            <dd className="mt-1 text-sm text-slate-800">
-                                {center.location}
-                            </dd>
-                        </div>
-                    )}
-
-                    {center.head && (
-                        <div>
-                            <dt className="text-xs font-medium uppercase text-slate-400">
-                                Head
-                            </dt>
-
-                            <dd className="mt-1 text-sm text-slate-800">
-                                {typeof center.head ===
-                                "object"
-                                    ? center.head.name ||
-                                      center.head.email ||
-                                      center.head._id
-                                    : center.head}
-                            </dd>
-                        </div>
-                    )}
-                </dl>
+                <AssignEmployeesPanel
+                    centerId={center.centerId}
+                    existingEmployees={center.employees || []}
+                    onAssigned={loadCenter}
+                />
             </div>
         </div>
     );
