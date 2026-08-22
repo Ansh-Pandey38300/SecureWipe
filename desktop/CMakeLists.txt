@@ -7,10 +7,10 @@ qt_standard_project_setup()
 
 qt_add_executable(SecureWipe
     WIN32 MACOSX_BUNDLE
-    main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    mainwindow.ui
+    frontend/main.cpp
+    frontend/mainwindow.cpp
+    frontend/mainwindow.h
+    frontend/mainwindow.ui
 )
 
 target_link_libraries(SecureWipe
@@ -30,4 +30,5 @@ qt_generate_deploy_app_script(
     OUTPUT_SCRIPT deploy_script
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
+
 install(SCRIPT ${deploy_script})
