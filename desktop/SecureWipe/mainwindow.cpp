@@ -6,6 +6,9 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    connect(ui->loginButton, &QPushButton::clicked, this, [this](){
+        ui->stackedWidget->setCurrentWidget(ui->dashboardPage);
+    });
 }
 
 MainWindow::~MainWindow()
