@@ -21,26 +21,60 @@
        <number>0</number>
       </property>
       <widget class="QWidget" name="loginPage">
+       <property name="styleSheet">
+        <string notr="true">background-color: #080D1A;</string>
+       </property>
        <widget class="QWidget" name="layoutWidget">
         <property name="geometry">
          <rect>
-          <x>210</x>
+          <x>0</x>
           <y>0</y>
-          <width>261</width>
-          <height>331</height>
+          <width>781</width>
+          <height>541</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">
+         <property name="leftMargin">
+          <number>80</number>
+         </property>
+         <property name="topMargin">
+          <number>40</number>
+         </property>
+         <property name="rightMargin">
+          <number>80</number>
+         </property>
+         <property name="bottomMargin">
+          <number>40</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="logoLabel">
+           <property name="text">
+            <string>[LOGO]</string>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QLabel" name="titleLabel">
+           <property name="font">
+            <font>
+             <pointsize>30</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color: #FFFFFF;</string>
+           </property>
            <property name="lineWidth">
             <number>1</number>
            </property>
            <property name="text">
-            <string>Secure Wipe</string>
+            <string>SecureWipe</string>
            </property>
            <property name="scaledContents">
             <bool>false</bool>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignCenter</set>
            </property>
           </widget>
          </item>
