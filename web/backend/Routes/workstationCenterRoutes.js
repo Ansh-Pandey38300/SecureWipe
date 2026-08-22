@@ -1,10 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const workstationController = require("../Controller/workstationCenter.controller");
+
+const { validate } = require("../middlewares/validate.middleware");
 const { Authenticate } = require("../middlewares/auth.middleware");
 const { Authorize } = require("../middlewares/authorize.middleware");
+const { workstationCenterSchema } = require("../schema");
 
-router.post("/", Authenticate, Authorize("ADMIN"), workstationController.createWorkStationCenter);
+const workstationController = require("../Controller/workstationCenter.controller");
+
+router.post("/", Authenticate, Authorize("ADMIN"), validate(workstationCenterSchema), workstationController.createWorkStationCenter);
 router.get("/:id", Authenticate, workstationController.getWorkstationCenterById);
 router.post("/:id/employees", Authenticate, Authorize("ADMIN", "WORKSTATION_HEAD"), workstationController.assignEmployees);
 
