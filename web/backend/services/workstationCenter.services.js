@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const WorkstationCenter = require("../models/WorkstationCenter");
 const AppError = require("../utils/AppError");
@@ -96,10 +97,10 @@ const getWorkstationCenterById = async (centerId, user) => {
     );
 }
 
-const assignEmployees = async (centerId, employeeIds, currentUser) => {
+const assignEmployees = async (centerId, employeesIds, currentUser) => {
 
-    // 1. employeeIds array check
-    if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+    // 1. employeesIds array check
+    if (!Array.isArray(employeesIds) || employeesIds.length === 0) {
         throw new AppError("At least one employee is required", 400);
     }
 
@@ -123,15 +124,30 @@ const assignEmployees = async (centerId, employeeIds, currentUser) => {
     }
 
     // 4. Remove duplicate employee IDs
-    const uniqueEmployeeIds = [...new Set(employeeIds.map(id => id.toString()))];
+    const uniqueemployeesIds = [...new Set(employeesIds.map(id => id.toString()))];
+    
+    // Check whether every ID is a valid MongoDB ObjectId
+    const invalidEmployeeId = uniqueemployeesIds.find(id => !mongoose.Types.ObjectId.isValid(id));
+
+    if (invalidEmployeeId) {
+        throw new AppError(
+            `Invalid employee ID: ${invalidEmployeeId}`,
+            400
+        );
+    };
+
+    const employeeObjectIds =
+        uniqueemployeesIds.map(
+            id => new mongoose.Types.ObjectId(id)
+        );
 
     // 5. Find all selected users
     const employees = await User.find({
-        _id: { $in: uniqueEmployeeIds }
+        _id: { $in: employeeObjectIds }
     });
 
     // 6. Check all employees exist
-    if (employees.length !== uniqueEmployeeIds.length) {
+    if (employees.length !== employeeObjectIds.length) {
         throw new AppError(
             "One or more employees were not found",
             404
@@ -175,14 +191,14 @@ const assignEmployees = async (centerId, employeeIds, currentUser) => {
     }
 
     // 10. Add employees to center
-    center.employees.push(...uniqueEmployeeIds);
+    center.employees.push(...employeeObjectIds);
 
     await center.save();
 
     // 11. Update each employee's workstationCenter
     await User.updateMany(
         {
-            _id: { $in: uniqueEmployeeIds }
+            _id: { $in: employeeObjectIds }
         },
         {
             $set: {
