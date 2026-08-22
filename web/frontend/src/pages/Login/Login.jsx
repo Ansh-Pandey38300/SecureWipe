@@ -1,111 +1,173 @@
-import React, { useState } from "react";
-import { loginUser } from "../../services/authService";
-import { Link } from "react-router-dom";
-import styles from "./login.module.css";
+import { useEffect, useState } from "react";
+import {
+    Link,
+    useLocation,
+    useNavigate,
+} from "react-router-dom";
+
+import toast from "react-hot-toast";
+
+import { useAuth } from "../../context/AuthContext";
 
 function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [message, setMessage] = useState("");
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    const {
+        login,
+        isAuthenticated,
+        user,
+    } = useAuth();
+
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    useEffect(() => {
+        if (!isAuthenticated || !user) {
+            return;
+        }
+
+        if (user.role === "ADMIN") {
+            navigate("/admin/dashboard", {
+                replace: true,
+            });
+        } else if (
+            user.role === "WORKSTATION_HEAD"
+        ) {
+            navigate(
+                "/workstation-head/dashboard",
+                {
+                    replace: true,
+                }
+            );
+        } else if (
+            user.role === "WORKSTATION_EMPLOYEE"
+        ) {
+            navigate(
+                "/workstation-employee/dashboard",
+                {
+                    replace: true,
+                }
+            );
+        } else if (
+            user.role === "CUSTOMER"
+        ) {
+            navigate("/customer/dashboard", {
+                replace: true,
+            });
+        }
+    }, [
+        isAuthenticated,
+        user,
+        navigate,
+    ]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+
         setLoading(true);
 
-        setMessage("");
-        setError("");
-
-        const loginData = {
-            email,
-            password
-        };
-
-        console.log("Login data:", loginData);
-
         try {
-            const data = await loginUser(loginData);
+            await login({
+                email,
+                password,
+            });
 
-            console.log("Backend response:", data);
-
-            if (data.success) {
-                setMessage(data.message);
-            } else {
-                setError(data.error?.message || "Login failed");
-            }
+            toast.success("Login successful");
         } catch (error) {
-            console.error("Login failed:", error);
-            setError(error.message || "Unable to connect to the server, please try again later");
+            toast.error(
+                error.message ||
+                "Unable to login"
+            );
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className={styles.loginPage} id="login-page">
-            <div className={styles.loginContainer} id="login-container">
-                <h1 className={styles.loginTitle} id="login-title">Login</h1>
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 px-4 py-8">
+            <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-md">
+                <div className="mb-7 text-center">
+                    <h1 className="text-3xl font-bold text-slate-900">
+                        Login
+                    </h1>
 
-                {message && (
-                    <p className={styles.message} id="login-message">
-                        {message}
+                    <p className="mt-2 text-sm text-slate-500">
+                        Sign in to your SecureWipe account
                     </p>
-                )}
-
-                {error && (
-                    <p className={styles.error} id="login-error">
-                        {error}
-                    </p>
-                )}
+                </div>
 
                 <form
                     onSubmit={handleSubmit}
-                    className={styles.loginForm}
-                    id="login-form"
+                    className="space-y-5"
                 >
-                    <div className={styles.formGroup} id="email-group">
-                        <label className={styles.formLabel}>Email</label>
+                    <div className="space-y-2">
+                        <label
+                            htmlFor="email"
+                            className="block text-sm font-medium text-slate-700"
+                        >
+                            Email
+                        </label>
+
                         <input
-                            className={styles.formInput}
                             id="email"
                             type="email"
-                            placeholder="Enter your email"
                             value={email}
-                            onChange={(event) => setEmail(event.target.value)}
+                            onChange={(event) =>
+                                setEmail(
+                                    event.target.value
+                                )
+                            }
+                            placeholder="Enter your email"
                             required
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                         />
                     </div>
 
-                    <div className={styles.formGroup} id="password-group">
-                        <label className={styles.formLabel}>Password</label>
+                    <div className="space-y-2">
+                        <label
+                            htmlFor="password"
+                            className="block text-sm font-medium text-slate-700"
+                        >
+                            Password
+                        </label>
+
                         <input
-                            className={styles.formInput}
                             id="password"
                             type="password"
-                            placeholder="Enter your password"
                             value={password}
-                            onChange={(event) => setPassword(event.target.value)}
+                            onChange={(event) =>
+                                setPassword(
+                                    event.target.value
+                                )
+                            }
+                            placeholder="Enter your password"
                             required
+                            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                         />
                     </div>
 
                     <button
-                        className={styles.loginButton}
-                        id="login-button"
                         type="submit"
                         disabled={loading}
+                        className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {loading ? "Logging in..." : "Login"}
+                        {loading
+                            ? "Logging in..."
+                            : "Login"}
                     </button>
                 </form>
 
-                <p className={styles.registerText} id="register-text">
+                <p className="mt-6 text-center text-sm text-slate-500">
                     Don't have an account?{" "}
+
                     <Link
-                        className={styles.registerLink}
-                        id="register-link"
                         to="/register"
+                        state={{
+                            from: location.pathname,
+                        }}
+                        className="font-semibold text-indigo-600 hover:text-indigo-700"
                     >
                         Register
                     </Link>

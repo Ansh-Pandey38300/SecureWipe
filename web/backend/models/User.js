@@ -54,6 +54,12 @@ const userSchema = new mongoose.Schema(
             default: "ACTIVE"
         },
 
+        workstationCenter: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "WorkstationCenter",
+            default: null
+        },
+        
         emailVerified: {
             type: Boolean,
             default: false
