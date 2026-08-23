@@ -1,0 +1,34 @@
+require("dotenv").config();
+
+const express = require("express");
+
+const cors = require("cors");
+const app = express();
+
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+}));
+
+app.use(express.json());
+
+
+// Routes
+const authRoute = require("./Routes/auth.routes");
+const workstationRoute = require("./Routes/workstationCenterRoutes");
+const userRoute = require("./Routes/users.routes");
+
+// error middlewares
+const notFound = require("./middlewares/notFound");
+const errorHandler = require("./middlewares/errorHandler");
+
+// routing
+app.use("/api/auth", authRoute);
+app.use("/api/workstation-centers", workstationRoute);
+app.use("/api/users", userRoute);
+
+//adding errors
+app.use(notFound);
+app.use(errorHandler);
+
+module.exports = app;

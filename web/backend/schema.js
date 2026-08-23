@@ -55,7 +55,92 @@ const loginSchema = Joi.object({
         }),
 });
 
+const workstationCenterSchema = Joi.object({
+    name: Joi.string()
+        .trim()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({
+            "any.required": "Center name is required",
+            "string.empty": "Center name is required",
+            "string.min": "Center name must be at least 2 characters long",
+            "string.max": "Center name cannot exceed 100 characters"
+        }),
+
+    head: Joi.string()
+        .trim()
+        .pattern(/^[0-9a-fA-F]{24}$/)
+        .required()
+        .messages({
+            "any.required": "Workstation head is required",
+            "string.empty": "Workstation head is required",
+            "string.pattern.base": "Workstation head must be a valid user ID"
+        }),
+
+    location: Joi.object({
+        address: Joi.string()
+            .trim()
+            .min(2)
+            .max(200)
+            .required()
+            .messages({
+                "any.required": "Address is required",
+                "string.empty": "Address is required"
+            }),
+
+        city: Joi.string()
+            .trim()
+            .min(2)
+            .max(100)
+            .required()
+            .messages({
+                "any.required": "City is required",
+                "string.empty": "City is required"
+            }),
+
+        state: Joi.string()
+            .trim()
+            .min(2)
+            .max(100)
+            .required()
+            .messages({
+                "any.required": "State is required",
+                "string.empty": "State is required"
+            }),
+
+        postalCode: Joi.string()
+            .trim()
+            .min(3)
+            .max(20)
+            .required()
+            .messages({
+                "any.required": "Postal code is required",
+                "string.empty": "Postal code is required"
+            }),
+
+        country: Joi.string()
+            .trim()
+            .min(2)
+            .max(100)
+            .default("India")
+    })
+        .required()
+        .messages({
+            "any.required": "Location is required",
+            "object.base": "Location must be an object"
+        }),
+
+    status: Joi.string()
+        .valid("ACTIVE", "INACTIVE")
+        .optional()
+        .messages({
+            "any.only": "Status must be either ACTIVE or INACTIVE"
+        })
+});
+
 module.exports = {
     registerSchema,
-    loginSchema
+    loginSchema,
+    workstationCenterSchema
 };

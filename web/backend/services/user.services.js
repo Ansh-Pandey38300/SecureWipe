@@ -1,9 +1,12 @@
 const User = require("../models/User");
+const AppError = require("../utils/AppError");
+
 const asignableRoles = [
     "WORKSTATION_HEAD",
     "WORKSTATION_EMPLOYEE",
     "CUSTOMER"
-]
+];
+
 const getAllUsers = async () => {
     const users = await User.find()
         .select("_id name email role status emailVerified createdAt");
@@ -22,7 +25,7 @@ const updateUserRole = async (id, role) => {
     if (user.role === "ADMIN") {
         throw new AppError(
             "Admin role cannot be changed",
-            403
+            400
         );
     }
 
@@ -37,7 +40,7 @@ const updateUserRole = async (id, role) => {
     await user.save();
 
     return user;
-}
+};
 
 const getEligibleWorkstationHeads = async () => {
     const users = await User.find({
