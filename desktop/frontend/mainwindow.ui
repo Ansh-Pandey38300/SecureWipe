@@ -112,44 +112,6 @@
            </spacer>
           </item>
           <item>
-           <widget class="QLabel" name="logoLabel">
-            <property name="minimumSize">
-             <size>
-              <width>64</width>
-              <height>64</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>64</width>
-              <height>64</height>
-             </size>
-            </property>
-            <property name="styleSheet">
-             <string notr="true">QLabel#logoLabel {
-    color: #60A5FA;
-    background-color: #111C2F;
-    border: 1px solid #2563EB;
-    border-radius: 32px;
-    font-size: 22px;
-    font-weight: bold;
-}</string>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="pixmap">
-             <pixmap>../../../../Downloads/Gemini_Generated_Image_x8g41lx8g41lx8g4-removebg-preview.png</pixmap>
-            </property>
-            <property name="scaledContents">
-             <bool>true</bool>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignmentFlag::AlignCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QLabel" name="appTitle">
             <property name="styleSheet">
              <string notr="true">QLabel#appTitle {
