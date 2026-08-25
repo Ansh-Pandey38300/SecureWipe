@@ -11,27 +11,52 @@ import WorkstationCenterForm from "../../../components/forms/WorkstationCenterFo
 import WorkstationCenterDetails from "../../../components/workstation/WorkstationCenterDetails";
 import AssignEmployeesPanel from "../../../components/workstation/AssignEmployeesPanel";
 
+function validateCenterId(centerId) {
+    const errors = {};
+    const trimmedId = centerId.trim();
+
+    if (!trimmedId) {
+        errors.centerId = "Center ID is required.";
+    } else if (trimmedId.length < 2) {
+        errors.centerId =
+            "Center ID must be at least 2 characters.";
+    } else if (trimmedId.length > 100) {
+        errors.centerId =
+            "Center ID must not exceed 100 characters.";
+    }
+
+    return errors;
+}
+
 function AdminWorkstationCenters() {
     const [lookupId, setLookupId] = useState("");
-    const [viewedCenter, setViewedCenter] = useState(null);
-    const [loadingCenter, setLoadingCenter] = useState(false);
-    const [lookupError, setLookupError] = useState("");
+    const [viewedCenter, setViewedCenter] =
+        useState(null);
+    const [loadingCenter, setLoadingCenter] =
+        useState(false);
+    const [lookupError, setLookupError] =
+        useState("");
+    const [validationError, setValidationError] =
+        useState("");
 
     const loadCenter = async (centerId) => {
-        if (!centerId) {
-            return;
-        }
-
         setLoadingCenter(true);
         setLookupError("");
 
         try {
-            const response = await getWorkstationCenter(centerId);
-            setViewedCenter(response.data || response.center || response);
+            const response =
+                await getWorkstationCenter(centerId);
+
+            setViewedCenter(
+                response.data ||
+                    response.center ||
+                    response
+            );
         } catch (error) {
             setViewedCenter(null);
             setLookupError(
-                error.message || "Unable to load workstation center."
+                error.message ||
+                    "Unable to load workstation center."
             );
         } finally {
             setLoadingCenter(false);
@@ -39,18 +64,62 @@ function AdminWorkstationCenters() {
     };
 
     const handleCreated = (response) => {
-        const created = response.data || response.center || response;
+        const created =
+            response.data ||
+            response.center ||
+            response;
 
         if (created?.centerId) {
             setLookupId(created.centerId);
             setViewedCenter(created);
             setLookupError("");
+            setValidationError("");
         }
     };
 
-    const handleLookupSubmit = (event) => {
+    const handleLookupChange = (event) => {
+        const value = event.target.value;
+
+        setLookupId(value);
+        setLookupError("");
+
+        if (validationError) {
+            const errors = validateCenterId(value);
+
+            setValidationError(
+                errors.centerId || ""
+            );
+        }
+    };
+
+    const handleLookupBlur = () => {
+        const errors =
+            validateCenterId(lookupId);
+
+        setValidationError(
+            errors.centerId || ""
+        );
+    };
+
+    const handleLookupSubmit = async (event) => {
         event.preventDefault();
-        loadCenter(lookupId.trim());
+
+        if (loadingCenter) {
+            return;
+        }
+
+        const errors =
+            validateCenterId(lookupId);
+
+        setValidationError(
+            errors.centerId || ""
+        );
+
+        if (errors.centerId) {
+            return;
+        }
+
+        await loadCenter(lookupId.trim());
     };
 
     return (
@@ -65,7 +134,9 @@ function AdminWorkstationCenters() {
                     Create Workstation Center
                 </h2>
 
-                <WorkstationCenterForm onCreated={handleCreated} />
+                <WorkstationCenterForm
+                    onCreated={handleCreated}
+                />
             </div>
 
             <div className="max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -74,29 +145,58 @@ function AdminWorkstationCenters() {
                 </h2>
 
                 <p className="mb-4 text-sm text-slate-500">
-                    There is no backend endpoint to list all workstation
-                    centers, so look one up by its center ID. A newly
-                    created center loads here automatically.
+                    There is no backend endpoint to
+                    list all workstation centers, so
+                    look one up by its center ID. A
+                    newly created center loads here
+                    automatically.
                 </p>
 
                 <form
                     onSubmit={handleLookupSubmit}
                     className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                    noValidate
                 >
                     <div className="flex-1">
                         <Input
                             id="lookup-center-id"
                             label="Center ID"
                             value={lookupId}
-                            onChange={(event) =>
-                                setLookupId(event.target.value)
+                            onChange={
+                                handleLookupChange
+                            }
+                            onBlur={
+                                handleLookupBlur
                             }
                             placeholder="Enter center ID"
+                            aria-invalid={Boolean(
+                                validationError
+                            )}
+                            aria-describedby={
+                                validationError
+                                    ? "lookup-center-id-error"
+                                    : undefined
+                            }
                         />
+
+                        {validationError && (
+                            <p
+                                id="lookup-center-id-error"
+                                className="mt-1 text-sm text-red-600"
+                                role="alert"
+                            >
+                                {validationError}
+                            </p>
+                        )}
                     </div>
 
-                    <Button type="submit" disabled={loadingCenter}>
-                        {loadingCenter ? "Loading..." : "Load Center"}
+                    <Button
+                        type="submit"
+                        disabled={loadingCenter}
+                    >
+                        {loadingCenter
+                            ? "Loading..."
+                            : "Load Center"}
                     </Button>
                 </form>
             </div>
@@ -111,7 +211,9 @@ function AdminWorkstationCenters() {
 
             {!loadingCenter && viewedCenter && (
                 <div className="max-w-xl space-y-6">
-                    <WorkstationCenterDetails center={viewedCenter} />
+                    <WorkstationCenterDetails
+                        center={viewedCenter}
+                    />
 
                     <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                         <h2 className="mb-4 text-base font-semibold text-slate-900">
@@ -119,9 +221,18 @@ function AdminWorkstationCenters() {
                         </h2>
 
                         <AssignEmployeesPanel
-                            centerId={viewedCenter.centerId}
-                            existingEmployees={viewedCenter.employees || []}
-                            onAssigned={() => loadCenter(viewedCenter.centerId)}
+                            centerId={
+                                viewedCenter.centerId
+                            }
+                            existingEmployees={
+                                viewedCenter.employees ||
+                                []
+                            }
+                            onAssigned={() =>
+                                loadCenter(
+                                    viewedCenter.centerId
+                                )
+                            }
                         />
                     </div>
                 </div>
