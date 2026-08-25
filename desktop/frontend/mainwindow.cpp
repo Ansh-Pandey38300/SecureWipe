@@ -1,15 +1,43 @@
 #include "mainwindow.h"
+#include "AuthManager.h"
 #include "ui_mainwindow.h"
 #include <QPushButton>
+#include <QRegularExpression>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    connect(ui->loginButton, &QPushButton::clicked, this, [this](){
+    authManager = new AuthManager(this);
+    connect(authManager, &AuthManager::loginSuccessful, this, [this]() {
         ui->stackedWidget->setCurrentWidget(ui->appPage);
         ui->contentStack->setCurrentWidget(ui->dashboardPage);
         setActiveNavButton(ui->dashboardNavButton);
+    });
+    connect(authManager, &AuthManager::loginFailed, this, [this](const QString &message) {
+        ui->loginErrorLabel->setText(message);
+    });
+    connect(ui->loginButton, &QPushButton::clicked, this, [this]() {
+        ui->loginErrorLabel->clear();
+        QString email = ui->emailLineEdit->text().trimmed();
+        if (email.isEmpty()) {
+            ui->loginErrorLabel->setText("Email is required.");
+            return;
+        }
+        QRegularExpression emailPattern(
+            R"(^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$)"
+            );
+
+        if (!emailPattern.match(email).hasMatch()) {
+            ui->loginErrorLabel->setText("Please enter a valid email address.");
+            return;
+        }
+        QString password = ui->passwordLineEdit->text().trimmed();
+        if (password.isEmpty()) {
+            ui->loginErrorLabel->setText("Password is required.");
+            return;
+        }
+        authManager->login(email, password);
     });
     connect(ui->dashboardNavButton, &QPushButton::clicked, this, [this](){
         ui->contentStack->setCurrentWidget(ui->dashboardPage);

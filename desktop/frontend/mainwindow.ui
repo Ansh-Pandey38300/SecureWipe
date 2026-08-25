@@ -161,16 +161,16 @@
            </spacer>
           </item>
           <item>
-           <widget class="QLabel" name="operatorLabel">
+           <widget class="QLabel" name="emailLineLabel">
             <property name="styleSheet">
-             <string notr="true">QLabel#operatorLabel {
+             <string notr="true">QLabel#emailLineLabel {
     color: #C8D4E5;
     font-size: 13px;
     font-weight: bold;
 }</string>
             </property>
             <property name="text">
-             <string>Operator ID</string>
+             <string>Email ID</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -178,7 +178,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="operatorInput">
+           <widget class="QLineEdit" name="emailLineEdit">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -198,7 +198,7 @@
              </size>
             </property>
             <property name="styleSheet">
-             <string notr="true">QLineEdit#operatorInput {
+             <string notr="true">QLineEdit#emailLineEdit {
     background-color: #151F32;
     color: #EAF2FF;
     border: 1px solid #34445C;
@@ -241,7 +241,7 @@ QLineEdit#operatorInput::placeholder {
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="passwordInput">
+           <widget class="QLineEdit" name="passwordLineEdit">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -261,7 +261,7 @@ QLineEdit#operatorInput::placeholder {
              </size>
             </property>
             <property name="styleSheet">
-             <string notr="true">QLineEdit#passwordInput {
+             <string notr="true">QLineEdit#passwordLineEdit {
     background-color: #151F32;
     color: #EAF2FF;
     border: 1px solid #34445C;
@@ -286,6 +286,25 @@ QLineEdit#passwordInput::placeholder {
             </property>
             <property name="placeholderText">
              <string>Enter password</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="loginErrorLabel">
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">color: #FF6B6B;
+background-color: transparent;</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignCenter</set>
             </property>
            </widget>
           </item>
