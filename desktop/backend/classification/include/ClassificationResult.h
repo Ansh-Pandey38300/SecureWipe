@@ -26,7 +26,7 @@ enum class DeviceType
 struct ClassificationResult
 {
     MediaType mediaType;
-    BusType BusType;
+    BusType busType;
     DeviceType deviceType;
     bool isSystemDisk;
 };

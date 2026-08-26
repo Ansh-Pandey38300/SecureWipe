@@ -1,5 +1,5 @@
 #include "../storage/include/StorageDevice.h"
-#include "../storage/include/WindowsStorageDiscovery.h"
+#include "../discovery/include/WindowsStorageDiscovery.h"
 
 #include <iostream>
 #include <vector>
