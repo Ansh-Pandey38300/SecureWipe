@@ -180,14 +180,15 @@ static bool getPhysicalDriveNumber(
 
 
 // ============================================================
-// Helper: Get model, serial number and bus type
+// Helper: Get model, serial number, bus type and removable state
 // ============================================================
 
 static bool getStorageDescriptor(
     const std::wstring& physicalDrivePath,
     std::string& model,
     std::string& serialNumber,
-    std::string& interfaceType)
+    std::string& interfaceType,
+    bool& isRemovable)
 {
     HANDLE deviceHandle = CreateFileW(
         physicalDrivePath.c_str(),
@@ -209,7 +210,9 @@ static bool getStorageDescriptor(
     query.PropertyId = StorageDeviceProperty;
     query.QueryType = PropertyStandardQuery;
 
+    // --------------------------------------------------------
     // First call: find required buffer size
+    // --------------------------------------------------------
 
     STORAGE_DESCRIPTOR_HEADER header{};
     DWORD bytesReturned = 0;
@@ -232,11 +235,15 @@ static bool getStorageDescriptor(
         return false;
     }
 
+    // --------------------------------------------------------
     // Allocate buffer
+    // --------------------------------------------------------
 
     std::vector<BYTE> buffer(header.Size);
 
+    // --------------------------------------------------------
     // Second call: get actual descriptor
+    // --------------------------------------------------------
 
     success = DeviceIoControl(
         deviceHandle,
@@ -260,7 +267,9 @@ static bool getStorageDescriptor(
             buffer.data()
         );
 
+    // --------------------------------------------------------
     // Model / Product ID
+    // --------------------------------------------------------
 
     if (descriptor->ProductIdOffset != 0 &&
         descriptor->ProductIdOffset < buffer.size())
@@ -273,7 +282,9 @@ static bool getStorageDescriptor(
         model = product;
     }
 
+    // --------------------------------------------------------
     // Serial Number
+    // --------------------------------------------------------
 
     if (descriptor->SerialNumberOffset != 0 &&
         descriptor->SerialNumberOffset < buffer.size())
@@ -286,12 +297,81 @@ static bool getStorageDescriptor(
         serialNumber = serial;
     }
 
+    // --------------------------------------------------------
     // Bus Type
+    // --------------------------------------------------------
 
     interfaceType =
         getBusTypeName(descriptor->BusType);
 
+    // --------------------------------------------------------
+    // Removable Media
+    // --------------------------------------------------------
+
+    isRemovable =
+        descriptor->RemovableMedia != FALSE;
+
     CloseHandle(deviceHandle);
+
+    return true;
+}
+
+
+// ============================================================
+// Helper: Get seek penalty
+// ============================================================
+
+static bool getSeekPenalty(
+    const std::wstring& physicalDrivePath,
+    bool& hasSeekPenalty)
+{
+    HANDLE deviceHandle = CreateFileW(
+        physicalDrivePath.c_str(),
+        0,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        0,
+        nullptr
+    );
+
+    if (deviceHandle == INVALID_HANDLE_VALUE)
+    {
+        return false;
+    }
+
+    STORAGE_PROPERTY_QUERY query{};
+
+    query.PropertyId =
+        StorageDeviceSeekPenaltyProperty;
+
+    query.QueryType =
+        PropertyStandardQuery;
+
+    DEVICE_SEEK_PENALTY_DESCRIPTOR seekPenaltyDescriptor{};
+
+    DWORD bytesReturned = 0;
+
+    bool success = DeviceIoControl(
+        deviceHandle,
+        IOCTL_STORAGE_QUERY_PROPERTY,
+        &query,
+        sizeof(query),
+        &seekPenaltyDescriptor,
+        sizeof(seekPenaltyDescriptor),
+        &bytesReturned,
+        nullptr
+    );
+
+    CloseHandle(deviceHandle);
+
+    if (!success)
+    {
+        return false;
+    }
+
+    hasSeekPenalty =
+        seekPenaltyDescriptor.IncursSeekPenalty != FALSE;
 
     return true;
 }
@@ -615,18 +695,21 @@ WindowsStorageDiscovery::discover()
 
         // ====================================================
         // STEP 10
-        // Get model, serial and interface type
+        // Get model, serial, interface and removable state
         // ====================================================
 
         std::string model = "Unknown";
         std::string serialNumber = "Unknown";
         std::string interfaceType = "Unknown";
 
+        bool isRemovable = false;
+
         getStorageDescriptor(
             physicalDrivePath,
             model,
             serialNumber,
-            interfaceType
+            interfaceType,
+            isRemovable
         );
 
 
@@ -645,6 +728,19 @@ WindowsStorageDiscovery::discover()
 
         // ====================================================
         // STEP 12
+        // Get seek penalty
+        // ====================================================
+
+        bool hasSeekPenalty = false;
+
+        getSeekPenalty(
+            physicalDrivePath,
+            hasSeekPenalty
+        );
+
+
+        // ====================================================
+        // STEP 13
         // Check whether this is the system disk
         // ====================================================
 
@@ -654,7 +750,7 @@ WindowsStorageDiscovery::discover()
 
 
         // ====================================================
-        // STEP 13
+        // STEP 14
         // Device ID
         // ====================================================
 
@@ -663,7 +759,7 @@ WindowsStorageDiscovery::discover()
 
 
         // ====================================================
-        // STEP 14
+        // STEP 15
         // Create StorageDevice
         // ====================================================
 
@@ -673,12 +769,14 @@ WindowsStorageDiscovery::discover()
             serialNumber,
             capacityBytes,
             interfaceType,
-            isSystemDisk
+            isSystemDisk,
+            isRemovable,
+            hasSeekPenalty
         );
 
 
         // ====================================================
-        // STEP 15
+        // STEP 16
         // Add to result
         // ====================================================
 
@@ -688,7 +786,7 @@ WindowsStorageDiscovery::discover()
 
 
         // ====================================================
-        // STEP 16
+        // STEP 17
         // Temporary output
         // ====================================================
 
@@ -716,11 +814,21 @@ WindowsStorageDiscovery::discover()
             << "System Disk    : "
             << (isSystemDisk ? "YES" : "NO")
             << "\n";
+
+        std::cout
+            << "Removable      : "
+            << (isRemovable ? "YES" : "NO")
+            << "\n";
+
+        std::cout
+            << "Seek Penalty   : "
+            << (hasSeekPenalty ? "YES" : "NO")
+            << "\n";
     }
 
 
     // ========================================================
-    // STEP 17
+    // STEP 18
     // Cleanup
     // ========================================================
 
@@ -730,7 +838,7 @@ WindowsStorageDiscovery::discover()
 
 
     // ========================================================
-    // STEP 18
+    // STEP 19
     // Return discovered devices
     // ========================================================
 

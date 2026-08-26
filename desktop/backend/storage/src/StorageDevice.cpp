@@ -6,7 +6,11 @@ StorageDevice::StorageDevice(
     std::string serialNumber,
     std::uint64_t capacityBytes,
     std::string interfaceType,
-    bool isSystemDisk)
+    bool isSystemDisk,
+    bool isRemovable,
+    bool hasSeekPenalty
+
+)
 {
     model_ = model;
     serialNumber_ = serialNumber;
@@ -14,6 +18,8 @@ StorageDevice::StorageDevice(
     deviceId_ = deviceId;
     interfaceType_ = interfaceType;
     isSystemDisk_ = isSystemDisk;
+    isRemovable_=isRemovable;
+    hasSeekPenalty_=hasSeekPenalty;
 }
 
 const std::string& StorageDevice::getModel() const
@@ -45,3 +51,11 @@ bool StorageDevice::isSystemDisk() const
 {
     return isSystemDisk_;
 }
+
+bool StorageDevice::isRemovable() const{
+  return isRemovable_;
+};
+
+bool StorageDevice:: hasSeekPenalty() const{return hasSeekPenalty_; };
+
+
