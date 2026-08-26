@@ -11,8 +11,15 @@ target_include_directories(
     storage/include
     discovery/include
     classification/include
-
 )
+
+if(WIN32)
+    target_link_libraries(
+        SecureWipeStorage
+        PUBLIC
+            setupapi
+    )
+endif()
 
 add_executable(
     StorageDeviceTest

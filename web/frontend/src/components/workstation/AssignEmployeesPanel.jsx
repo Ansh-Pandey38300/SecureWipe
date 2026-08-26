@@ -18,16 +18,12 @@ function AssignEmployeesPanel({
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [listError, setListError] = useState("");
     const [selectedIds, setSelectedIds] = useState([]);
-    const [validationError, setValidationError] =
-        useState("");
     const [submitting, setSubmitting] = useState(false);
 
     const existingIds = useMemo(() => {
         return new Set(
             existingEmployees.map((employee) =>
-                typeof employee === "object"
-                    ? employee._id
-                    : employee
+                typeof employee === "object" ? employee._id : employee
             )
         );
     }, [existingEmployees]);
@@ -43,9 +39,7 @@ function AssignEmployeesPanel({
                 setAllUsers(
                     Array.isArray(response)
                         ? response
-                        : response.users ||
-                          response.data ||
-                          []
+                        : response.users || response.data || []
                 );
             } catch (error) {
                 if (error.status === 403) {
@@ -58,8 +52,7 @@ function AssignEmployeesPanel({
                     );
                 } else {
                     setListError(
-                        error.message ||
-                            "Unable to load employees."
+                        error.message || "Unable to load employees."
                     );
                 }
             } finally {
@@ -73,28 +66,18 @@ function AssignEmployeesPanel({
     const eligibleEmployees = useMemo(() => {
         return allUsers.filter(
             (user) =>
-                user.role ===
-                    "WORKSTATION_EMPLOYEE" &&
+                user.role === "WORKSTATION_EMPLOYEE" &&
                 user.status === "ACTIVE" &&
                 !existingIds.has(user._id)
         );
     }, [allUsers, existingIds]);
 
     const toggleSelected = (userId) => {
-        setSelectedIds((previous) => {
-            const nextSelectedIds =
-                previous.includes(userId)
-                    ? previous.filter(
-                          (id) => id !== userId
-                      )
-                    : [...previous, userId];
-
-            if (nextSelectedIds.length > 0) {
-                setValidationError("");
-            }
-
-            return nextSelectedIds;
-        });
+        setSelectedIds((previous) =>
+            previous.includes(userId)
+                ? previous.filter((id) => id !== userId)
+                : [...previous, userId]
+        );
     };
 
     const handleSubmit = async (event) => {
@@ -105,24 +88,16 @@ function AssignEmployeesPanel({
         }
 
         if (selectedIds.length === 0) {
-            setValidationError(
-                "Select at least one employee to assign."
-            );
+            toast.error("Select at least one employee to assign");
             return;
         }
 
-        setValidationError("");
         setSubmitting(true);
 
         try {
-            await assignEmployeesToCenter(
-                centerId,
-                selectedIds
-            );
+            await assignEmployeesToCenter(centerId, selectedIds);
 
-            toast.success(
-                "Employees assigned successfully"
-            );
+            toast.success("Employees assigned successfully");
 
             setSelectedIds([]);
 
@@ -131,8 +106,7 @@ function AssignEmployeesPanel({
             }
         } catch (error) {
             toast.error(
-                error.message ||
-                    "Unable to assign employees"
+                error.message || "Unable to assign employees"
             );
         } finally {
             setSubmitting(false);
@@ -140,15 +114,11 @@ function AssignEmployeesPanel({
     };
 
     if (loadingUsers) {
-        return (
-            <Loading message="Loading eligible employees..." />
-        );
+        return <Loading message="Loading eligible employees..." />;
     }
 
     if (listError) {
-        return (
-            <ErrorMessage message={listError} />
-        );
+        return <ErrorMessage message={listError} />;
     }
 
     if (eligibleEmployees.length === 0) {
@@ -161,26 +131,8 @@ function AssignEmployeesPanel({
     }
 
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-            noValidate
-        >
-            <div
-                className={`max-h-64 space-y-1 overflow-y-auto rounded-lg border p-3 ${
-                    validationError
-                        ? "border-red-500"
-                        : "border-slate-200"
-                }`}
-                aria-invalid={Boolean(
-                    validationError
-                )}
-                aria-describedby={
-                    validationError
-                        ? "assign-employees-error"
-                        : undefined
-                }
-            >
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-3">
                 {eligibleEmployees.map((user) => (
                     <label
                         key={user._id}
@@ -189,14 +141,8 @@ function AssignEmployeesPanel({
                         <span className="flex items-center gap-2">
                             <input
                                 type="checkbox"
-                                checked={selectedIds.includes(
-                                    user._id
-                                )}
-                                onChange={() =>
-                                    toggleSelected(
-                                        user._id
-                                    )
-                                }
+                                checked={selectedIds.includes(user._id)}
+                                onChange={() => toggleSelected(user._id)}
                                 className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                             />
 
@@ -212,20 +158,7 @@ function AssignEmployeesPanel({
                 ))}
             </div>
 
-            {validationError && (
-                <p
-                    id="assign-employees-error"
-                    className="text-sm text-red-600"
-                    role="alert"
-                >
-                    {validationError}
-                </p>
-            )}
-
-            <Button
-                type="submit"
-                disabled={submitting}
-            >
+            <Button type="submit" disabled={submitting}>
                 {submitting
                     ? "Assigning..."
                     : `Assign Selected (${selectedIds.length})`}

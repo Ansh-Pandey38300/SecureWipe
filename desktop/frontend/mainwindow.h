@@ -9,6 +9,7 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+class AuthManager;
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    AuthManager *authManager;
     void setActiveNavButton(QPushButton *activeButton);
 };
 #endif // MAINWINDOW_H

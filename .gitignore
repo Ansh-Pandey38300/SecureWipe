@@ -1,0 +1,12 @@
+# Frontend build output
+web/frontend/dist/
+
+# CMake build directories
+**/build/
+
+# Visual Studio / CMake generated files
+**/.vs/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
