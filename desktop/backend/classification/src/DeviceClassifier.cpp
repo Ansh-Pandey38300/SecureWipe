@@ -5,7 +5,7 @@ ClassificationResult DeviceClassifier::classify(const StorageDevice &device)
     ClassificationResult result{};
 
     result.mediaType = MediaType::Unknown;
-    result.busType = BusType::Unknown;
+    result.busType = BusType:: Unkown;
     result.deviceType = DeviceType::Unknown;
     result.isSystemDisk = device.isSystemDisk();
 
@@ -28,5 +28,18 @@ ClassificationResult DeviceClassifier::classify(const StorageDevice &device)
         result.busType = BusType::SAS;
     }
 
+
+    if(device.isRemovable()){
+      result.deviceType=DeviceType::Removable;   
+    }
+    else{
+        result.deviceType=DeviceType::Internal;   
+    }
+
+    if(device.hasSeekPenalty()){
+        result.mediaType=MediaType::HDD;
+    }else{
+       result.mediaType=MediaType::SSD; 
+    }
     return result;
 }
