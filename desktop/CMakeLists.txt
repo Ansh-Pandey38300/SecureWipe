@@ -1,9 +1,14 @@
-cmake_minimum_required(VERSION 3.19)
-project(SecureWipe LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+
+project(SecureWipe
+    VERSION 1.0
+    LANGUAGES CXX
+)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Network)
 
-qt_standard_project_setup()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 qt_add_executable(SecureWipe
     WIN32 MACOSX_BUNDLE
@@ -21,6 +26,8 @@ target_link_libraries(SecureWipe
         Qt::Widgets
         Qt::Network
 )
+
+add_subdirectory(backend)
 
 install(TARGETS SecureWipe
     BUNDLE  DESTINATION .
