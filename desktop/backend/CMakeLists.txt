@@ -2,6 +2,7 @@ add_library(SecureWipeStorage
   storage/src/StorageDevice.cpp
   storage/src/StorageManager.cpp
   discovery/src/WindowsStorageDiscovery.cpp
+  classification/src/DeviceClassifier.cpp
 )
 
 target_include_directories(
@@ -9,6 +10,8 @@ target_include_directories(
     PUBLIC
     storage/include
     discovery/include
+    classification/include
+
 )
 
 add_executable(
@@ -26,10 +29,16 @@ add_executable(
     tests/WindowsStorageDiscoveryTest.cpp
 )
 
+add_executable(
+    DeviceClassifierTest
+    tests/DeviceClassifierTest.cpp
+)
+
 set(STORAGE_TESTS
     StorageDeviceTest
     StorageManagerTest
     WindowsStorageDiscoveryTest
+    DeviceClassifierTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)
@@ -39,6 +48,7 @@ target_include_directories(
     PRIVATE
         storage/include
         discovery/include
+        classification/include
 )
 
 target_link_libraries(

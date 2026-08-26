@@ -1,23 +1,51 @@
-#include "StorageDevice.h"
+#include "../storage/include/StorageDevice.h"
+
 #include <iostream>
-#include <string>
 
 int main()
 {
     StorageDevice device(
-        "TEST-001",
+        "device001",
         "Test SSD",
-        "TEST-SERIAL",
-        512ULL * 1024 * 1024 * 1024,
+        "SN123456789",
+        1000000000,
         "NVMe",
-        false);
+        false,   // isSystemDisk
+        false,   // isRemovable
+        false    // hasSeekPenalty
+    );
 
-    std::cout << device.getDeviceId() << '\n';
-    std::cout << device.getModel() << '\n';
-    std::cout << device.getSerialNumber() << '\n';
-    std::cout << device.getCapacityBytes() << '\n';
-    std::cout << device.getInterfaceType() << '\n';
-    std::cout << device.isSystemDisk() << '\n';
+    std::cout << "Model: "
+              << device.getModel()
+              << "\n";
+
+    std::cout << "Device ID: "
+              << device.getDeviceId()
+              << "\n";
+
+    std::cout << "Serial: "
+              << device.getSerialNumber()
+              << "\n";
+
+    std::cout << "Capacity: "
+              << device.getCapacityBytes()
+              << "\n";
+
+    std::cout << "Interface: "
+              << device.getInterfaceType()
+              << "\n";
+
+    std::cout << "System Disk: "
+              << (device.isSystemDisk() ? "YES" : "NO")
+              << "\n";
+
+    std::cout << "Removable: "
+              << (device.isRemovable() ? "YES" : "NO")
+              << "\n";
+
+    std::cout << "Seek Penalty: "
+              << (device.hasSeekPenalty() ? "YES" : "NO")
+              << "\n";
 
     return 0;
 }
