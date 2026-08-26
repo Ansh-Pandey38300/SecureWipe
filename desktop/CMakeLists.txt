@@ -7,6 +7,8 @@ project(SecureWipe
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Network)
 
+qt_standard_project_setup()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
