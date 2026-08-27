@@ -3,6 +3,9 @@
 
 #include <QMainWindow>
 #include <QPushButton>
+
+#include "StorageDevice.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -10,6 +13,10 @@ class MainWindow;
 QT_END_NAMESPACE
 
 class AuthManager;
+class DeviceController;
+class DeviceTableModel;
+class DeviceDetailsPage;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -20,7 +27,32 @@ public:
 
 private:
     Ui::MainWindow *ui;
+
     AuthManager *authManager;
+
+    DeviceController *deviceController;
+    DeviceTableModel *deviceTableModel;
+
+    DeviceDetailsPage *deviceDetailsPage;
+
+    QPushButton *refreshDevicesButton;
+
     void setActiveNavButton(QPushButton *activeButton);
+
+    void setupDevicesPage();
+
+    void refreshDevices();
+
+    void showSelectedDeviceDetails();
+
+    void showDeviceDetails(
+        const StorageDevice &device
+    );
+
+    void showDevicesPage();
+
+    void hideDeviceDetailsPage();
+    void logout();
 };
+
 #endif // MAINWINDOW_H
