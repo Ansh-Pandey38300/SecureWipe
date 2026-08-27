@@ -1,16 +1,18 @@
 add_library(
-  SecureWipeStorage
+    SecureWipeStorage
 
-  storage/src/StorageDevice.cpp
-  storage/src/StorageManager.cpp
+    storage/src/StorageDevice.cpp
+    storage/src/StorageManager.cpp
 
-  discovery/src/WindowsStorageDiscovery.cpp
+    discovery/src/WindowsStorageDiscovery.cpp
 
-  classification/src/DeviceClassifier.cpp
+    classification/src/DeviceClassifier.cpp
 
-  safety/src/BootInfo.cpp
-  safety/src/WindowsBootChecker.cpp
-#   safety/src/SafetyEngine.cpp
+    safety/src/BootInfo.cpp
+    safety/src/WindowsBootChecker.cpp
+
+    safety/src/WindowsStorageUtils.cpp
+    safety/src/SafetyEngine.cpp
 )
 
 target_include_directories(
@@ -58,10 +60,10 @@ add_executable(
     tests/WindowsBootCheckerTest.cpp
 )
 
-# add_executable(
-#     SafetyEngineTest
-#     tests/SafetyEngineTest.cpp
-# )
+add_executable(
+    SafetyEngineTest
+    tests/SafetyEngineTest.cpp
+)
 
 set(STORAGE_TESTS
     StorageDeviceTest
@@ -69,7 +71,7 @@ set(STORAGE_TESTS
     WindowsStorageDiscoveryTest
     DeviceClassifierTest
     WindowsBootCheckerTest
-    # SafetyEngineTest
+    SafetyEngineTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)

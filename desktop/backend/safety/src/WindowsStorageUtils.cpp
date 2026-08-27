@@ -102,6 +102,8 @@ bool WindowsStorageUtils::getPhysicalDisk(
 
     diskNumber = deviceNumber.DeviceNumber;
     partitionNumber = deviceNumber.PartitionNumber;
+
+    return true;
 };
 
 bool WindowsStorageUtils::getVolumePathFromFile(const std::wstring &filePath, std::wstring &volumePath)

@@ -1,88 +1,180 @@
-// #include <iostream>
-// #include "WindowsStorageDiscovery.h"
-// #include "SafetyEngine.h"
+#include <iostream>
+#include <vector>
 
-// int main()
-// {
+#include "SafetyEngine.h"
+#include "StorageDevice.h"
 
-//     std::cout << "========================================\n";
-//     std::cout << "   SafetyEngine - Check 3 Test\n";
-//     std::cout << "========================================\n\n";
 
-//     WindowsStorageDiscovery discovery;
-//     auto &devices = discovery.discover();
+int main()
+{
+    std::cout
+        << "========================================\n";
 
-//     std::cout << "Devices found: "
-//               << devices.size()
-//               << "\n\n";
+    std::cout
+        << "      SafetyEngine Target Test\n";
 
-//     if (devices.empty())
-//     {
-//         std::cout << "No storage devices found.\n";
-//         return 1;
-//     }
+    std::cout
+        << "========================================\n\n";
 
-//     for (int i = 0; i < devices.size(); ++i)
-//     {
-//         std::cout << "Device #" << i + 1 << "\n";
-//         std::cout << "Device ID : "
-//                   << devices[i].getDeviceId()
-//                   << "\n";
-//         std::cout << "Model     : "
-//                   << devices[i].getModel()
-//                   << "\n";
-//         std::cout << "Interface : "
-//                   << devices[i].getInterfaceType()
-//                   << "\n";
-//         std::cout << "Removable : "
-//                   << (devices[i].isRemovable() ? "YES" : "NO")
-//                   << "\n\n";
-//     }
 
-//     StorageDevice *target = nullptr;
+    /*
+     * Device originally selected by the user.
+     */
+    StorageDevice selectedDevice(
+        "\\\\.\\PhysicalDrive1",
+        "Test USB Drive",
+        "TEST-SERIAL-001",
+        64000000000ULL,
+        "USB",
+        false,
+        true,
+        false
+    );
 
-//     for (auto &device : devices)
-//     {
-//         if (device.getDeviceId() == "\\\\.\\PhysicalDrive1")
-//         {
-//             target = &device;
-//             break;
-//         }
-//     }
 
-//     if (target == nullptr)
-//     {
-//         std::cout << "Pendrive not found.\n";
-//         return 1;
-//     }
+    SafetyEngine safetyEngine;
 
-//     std::cout << "----------------------------------------\n";
-//     std::cout << "Selected Test Target\n";
-//     std::cout << "----------------------------------------\n";
+    safetyEngine.setExpectedTarget(
+        selectedDevice
+    );
 
-//     std::cout << "Device ID : "
-//               << target->getDeviceId()
-//               << "\n";
 
-//     std::cout << "Model     : "
-//               << target->getModel()
-//               << "\n\n";
+    /*
+     * Simulate a fresh discovery.
+     *
+     * The selected target is still present
+     * with the same identity.
+     */
+    std::vector<StorageDevice> freshDevices;
 
-//     SafetyEngine safety;
-//     bool result = safety.evaluate(*target);
+    freshDevices.emplace_back(
+        "\\\\.\\PhysicalDrive0",
+        "System Drive",
+        "SYSTEM-SERIAL",
+        512000000000ULL,
+        "NVMe",
+        true,
+        false,
+        false
+    );
 
-//     std::cout << "----------------------------------------\n";
+    freshDevices.emplace_back(
+        "\\\\.\\PhysicalDrive1",
+        "Test USB Drive",
+        "TEST-SERIAL-001",
+        64000000000ULL,
+        "USB",
+        false,
+        true,
+        false
+    );
 
-//     if (result)
-//     {
-//         std::cout << "Check 3 Result: SAFE\n";
-//     }
-//     else
-//     {
-//         std::cout << "Check 3 Result: BLOCKED\n";
-//     }
 
-//     std::cout << "----------------------------------------\n";
+    /*
+     * target represents the device that will be used
+     * after successful validation.
+     */
+    StorageDevice target =
+        selectedDevice;
 
-//     return 0;
-// }
+
+    bool validationResult =
+        safetyEngine.validateTarget(
+            freshDevices,
+            target
+        );
+
+
+    std::cout
+        << "Target Validation: ";
+
+    if (validationResult)
+    {
+        std::cout
+            << "PASSED\n";
+    }
+    else
+    {
+        std::cout
+            << "FAILED\n";
+    }
+
+
+    if (validationResult)
+    {
+        std::cout
+            << "\nValidated Target:\n";
+
+        std::cout
+            << "Device ID : "
+            << target.getDeviceId()
+            << "\n";
+
+        std::cout
+            << "Model     : "
+            << target.getModel()
+            << "\n";
+
+        std::cout
+            << "Serial    : "
+            << target.getSerialNumber()
+            << "\n";
+
+        std::cout
+            << "Capacity  : "
+            << target.getCapacityBytes()
+            << "\n";
+    }
+
+
+    /*
+     * Test the failure case.
+     *
+     * The fresh discovery contains a different device,
+     * so validation must fail.
+     */
+    std::vector<StorageDevice> wrongDevices;
+
+    wrongDevices.emplace_back(
+        "\\\\.\\PhysicalDrive2",
+        "Different USB Drive",
+        "DIFFERENT-SERIAL",
+        32000000000ULL,
+        "USB",
+        false,
+        true,
+        false
+    );
+
+
+    StorageDevice wrongTarget =
+        selectedDevice;
+
+
+    bool mismatchResult =
+        safetyEngine.validateTarget(
+            wrongDevices,
+            wrongTarget
+        );
+
+
+    std::cout
+        << "\nMismatch Test: ";
+
+    if (!mismatchResult)
+    {
+        std::cout
+            << "PASSED\n";
+    }
+    else
+    {
+        std::cout
+            << "FAILED\n";
+    }
+
+
+    std::cout
+        << "\n========================================\n";
+
+    return 0;
+}

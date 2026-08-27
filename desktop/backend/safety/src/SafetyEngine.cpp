@@ -210,17 +210,17 @@ bool SafetyEngine::checkTargetIdentity(const StorageDevice &device)
 bool SafetyEngine::validateTarget(const std::vector<StorageDevice> &devices, StorageDevice &target)
 {
     if (!hasExpectedTarget_)
-        return false;
+        return nullptr;
 
     for (std::size_t i = 0; i < devices.size(); ++i)
     {
         if (checkTargetIdentity(devices[i]))
         {
-            return true;
+            return &devices[i];
         }
     }
 
-    return false;
+    return nullptr;
 }
 
 bool SafetyEngine::evaluate(const StorageDevice &device)
