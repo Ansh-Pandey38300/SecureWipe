@@ -12,27 +12,61 @@ qt_standard_project_setup()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+add_subdirectory(backend)
+
 qt_add_executable(SecureWipe
-    WIN32 MACOSX_BUNDLE
+    WIN32
+    MACOSX_BUNDLE
+
     frontend/main.cpp
+
     frontend/mainwindow.cpp
     frontend/mainwindow.h
     frontend/mainwindow.ui
+
     frontend/AuthManager.cpp
     frontend/AuthManager.h
+
+    frontend/controllers/DeviceController.cpp
+    frontend/controllers/DeviceController.h
+
+    frontend/models/DeviceTableModel.cpp
+    frontend/models/DeviceTableModel.h
+
+    frontend/services/StorageService.cpp
+    frontend/services/StorageService.h
+
+    frontend/dialogs/DeviceDetailsDialog.cpp
+    frontend/dialogs/DeviceDetailsDialog.h
+
+    frontend/pages/DeviceDetailsPage.cpp
+    frontend/pages/DeviceDetailsPage.h
+
+    frontend/styles/AppTheme.cpp
+    frontend/styles/AppTheme.h
+
+    frontend/resources/resources.qrc
+)
+
+target_include_directories(SecureWipe
+    PRIVATE
+        frontend
+        frontend/controllers
+        frontend/models
+        frontend/services
+        frontend/dialogs
 )
 
 target_link_libraries(SecureWipe
     PRIVATE
-        Qt::Core
-        Qt::Widgets
-        Qt::Network
+        Qt6::Core
+        Qt6::Widgets
+        Qt6::Network
+        SecureWipeStorage
 )
 
-add_subdirectory(backend)
-
 install(TARGETS SecureWipe
-    BUNDLE  DESTINATION .
+    BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
