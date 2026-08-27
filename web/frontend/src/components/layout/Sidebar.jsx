@@ -58,6 +58,13 @@ function Sidebar() {
                         >
                             Workstation Centers
                         </NavLink>
+
+                        {/* <NavLink
+                            to="/admin/workstations"
+                            className={getLinkClass}
+                        >
+                            Workstations
+                        </NavLink> */}
                     </>
                 )}
 

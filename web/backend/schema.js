@@ -103,6 +103,7 @@ const workstationCenterSchema = Joi.object({
             .trim()
             .min(2)
             .max(100)
+            .default("Delhi")
             .required()
             .messages({
                 "any.required": "State is required",
@@ -139,8 +140,25 @@ const workstationCenterSchema = Joi.object({
         })
 });
 
+const workstationSchema = Joi.object({
+    name: Joi.string()
+        .trim()
+        .min(2)
+        .max(100)
+        .required(),
+
+    status: Joi.string()
+        .valid("ACTIVE", "INACTIVE", "MAINTENANCE")
+        .optional(),
+
+    workstationCenterId: Joi.string()
+        .trim()
+        .required(),
+});
+
 module.exports = {
     registerSchema,
     loginSchema,
-    workstationCenterSchema
+    workstationCenterSchema,
+    workstationSchema
 };

@@ -25,6 +25,8 @@ import WorkstationEmployeeDashboard from "./pages/WorkstationEmployee/Dashboard/
 
 import CustomerDashboard from "./pages/Customer/Dashboard/CustomerDashboard";
 
+
+
 function App() {
     return (
         <BrowserRouter>
@@ -81,6 +83,7 @@ function App() {
                                     <AdminWorkstationCenters />
                                 }
                             />
+
                         </Route>
                     </Route>
 
