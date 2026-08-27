@@ -12,10 +12,9 @@ function Sidebar() {
     const role = user?.role;
 
     const getLinkClass = ({ isActive }) =>
-        `block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            isActive
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        `block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive
+            ? "bg-indigo-50 text-indigo-700"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
         }`;
 
     const handleLogout = () => {
@@ -58,6 +57,13 @@ function Sidebar() {
                         >
                             Workstation Centers
                         </NavLink>
+{/*                         
+                        <NavLink
+                            to="/admin/dashboard"
+                            className={getLinkClass}
+                        >
+                            Sanitization Requests
+                        </NavLink> */}
 
                         {/* <NavLink
                             to="/admin/workstations"
@@ -97,6 +103,12 @@ function Sidebar() {
                             className={getLinkClass}
                         >
                             Dashboard
+                        </NavLink>
+                        <NavLink
+                            to="/customer/sanitization-request"
+                            className={getLinkClass}
+                        >
+                            Sanitization Request
                         </NavLink>
                     </>
                 )}

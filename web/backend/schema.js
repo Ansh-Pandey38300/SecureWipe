@@ -156,9 +156,108 @@ const workstationSchema = Joi.object({
         .required(),
 });
 
+
+const sanitizationRequestSchema =
+    Joi.object({
+        name: Joi.string()
+            .trim()
+            .min(2)
+            .max(100)
+            .required(),
+
+        email: Joi.string()
+            .trim()
+            .email()
+            .max(254)
+            .required(),
+
+        phone: Joi.string()
+            .trim()
+            .pattern(
+                /^\+?[0-9\s()-]{7,20}$/
+            )
+            .required(),
+
+        deviceType: Joi.string()
+            .valid(
+                "SSD",
+                "HDD",
+                "USB Drive",
+                "NVMe SSD",
+                "Other"
+            )
+            .required(),
+
+        capacity: Joi.string()
+            .valid(
+                "2 GB",
+                "4 GB",
+                "8 GB",
+                "16 GB",
+                "32 GB",
+                "64 GB",
+                "128 GB",
+                "256 GB",
+                "512 GB",
+                "1 TB",
+                "2 TB",
+                "Other"
+            )
+            .required(),
+
+        deviceCount: Joi.number()
+            .integer()
+            .min(1)
+            .max(100)
+            .required(),
+
+        assetIdentifier: Joi.string()
+            .trim()
+            .max(100)
+            .allow("")
+            .optional(),
+
+        sanitizationMethod: Joi.string()
+            .valid(
+                "Secure Erase",
+                "Cryptographic Erase",
+                "Overwrite",
+                "Standard Sanitization",
+                "To Be Determined"
+            )
+            .required(),
+
+        additionalRequirements:
+            Joi.string()
+                .trim()
+                .max(1000)
+                .allow("")
+                .optional(),
+
+        preferredDate:
+            Joi.alternatives()
+                .try(
+                    Joi.date(),
+                    Joi.string().valid("")
+                )
+                .allow(null)
+                .optional(),
+
+        notes: Joi.string()
+            .trim()
+            .max(2000)
+            .allow("")
+            .optional(),
+
+        consent: Joi.boolean()
+            .valid(true)
+            .required(),
+    });
+
 module.exports = {
     registerSchema,
     loginSchema,
     workstationCenterSchema,
-    workstationSchema
+    workstationSchema,
+    sanitizationRequestSchema
 };
