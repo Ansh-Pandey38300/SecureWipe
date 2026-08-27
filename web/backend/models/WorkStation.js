@@ -18,6 +18,12 @@ const workstationSchema = new mongoose.Schema(
             maxlength: 100
         },
 
+        workstationCenter: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "WorkstationCenter",
+            required: true
+        },
+
         assignedEmployee: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

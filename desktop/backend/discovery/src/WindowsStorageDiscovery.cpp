@@ -41,9 +41,10 @@ static std::string wideToString(const std::wstring& value)
         return {};
     }
 
-    std::string result(size - 1, '\0');
+    // Include space for the null terminator during conversion.
+    std::string result(size, '\0');
 
-    WideCharToMultiByte(
+    int converted = WideCharToMultiByte(
         CP_UTF8,
         0,
         value.c_str(),
@@ -53,6 +54,14 @@ static std::string wideToString(const std::wstring& value)
         nullptr,
         nullptr
     );
+
+    if (converted <= 0)
+    {
+        return {};
+    }
+
+    // Remove the null terminator from std::string.
+    result.resize(converted - 1);
 
     return result;
 }
@@ -173,7 +182,8 @@ static bool getPhysicalDriveNumber(
         return false;
     }
 
-    deviceNumber = storageDeviceNumber.DeviceNumber;
+    deviceNumber =
+        storageDeviceNumber.DeviceNumber;
 
     return true;
 }
@@ -207,8 +217,12 @@ static bool getStorageDescriptor(
 
     STORAGE_PROPERTY_QUERY query{};
 
-    query.PropertyId = StorageDeviceProperty;
-    query.QueryType = PropertyStandardQuery;
+    query.PropertyId =
+        StorageDeviceProperty;
+
+    query.QueryType =
+        PropertyStandardQuery;
+
 
     // --------------------------------------------------------
     // First call: find required buffer size
@@ -235,11 +249,13 @@ static bool getStorageDescriptor(
         return false;
     }
 
+
     // --------------------------------------------------------
     // Allocate buffer
     // --------------------------------------------------------
 
     std::vector<BYTE> buffer(header.Size);
+
 
     // --------------------------------------------------------
     // Second call: get actual descriptor
@@ -262,10 +278,12 @@ static bool getStorageDescriptor(
         return false;
     }
 
+
     auto descriptor =
         reinterpret_cast<STORAGE_DEVICE_DESCRIPTOR*>(
             buffer.data()
         );
+
 
     // --------------------------------------------------------
     // Model / Product ID
@@ -276,11 +294,13 @@ static bool getStorageDescriptor(
     {
         const char* product =
             reinterpret_cast<const char*>(
-                buffer.data() + descriptor->ProductIdOffset
+                buffer.data() +
+                descriptor->ProductIdOffset
             );
 
         model = product;
     }
+
 
     // --------------------------------------------------------
     // Serial Number
@@ -291,18 +311,23 @@ static bool getStorageDescriptor(
     {
         const char* serial =
             reinterpret_cast<const char*>(
-                buffer.data() + descriptor->SerialNumberOffset
+                buffer.data() +
+                descriptor->SerialNumberOffset
             );
 
         serialNumber = serial;
     }
+
 
     // --------------------------------------------------------
     // Bus Type
     // --------------------------------------------------------
 
     interfaceType =
-        getBusTypeName(descriptor->BusType);
+        getBusTypeName(
+            descriptor->BusType
+        );
+
 
     // --------------------------------------------------------
     // Removable Media
@@ -310,6 +335,7 @@ static bool getStorageDescriptor(
 
     isRemovable =
         descriptor->RemovableMedia != FALSE;
+
 
     CloseHandle(deviceHandle);
 
@@ -378,13 +404,15 @@ static bool getSeekPenalty(
 
 
 // ============================================================
-// Helper: Get disk capacity
+// Helper: Try to get physical disk capacity
 // ============================================================
 
-static bool getDiskCapacity(
+static bool getPhysicalDiskCapacity(
     const std::wstring& physicalDrivePath,
     std::uint64_t& capacityBytes)
 {
+    capacityBytes = 0;
+
     HANDLE deviceHandle = CreateFileW(
         physicalDrivePath.c_str(),
         0,
@@ -400,10 +428,17 @@ static bool getDiskCapacity(
         return false;
     }
 
+
+    // --------------------------------------------------------
+    // METHOD 1
+    // IOCTL_DISK_GET_LENGTH_INFO
+    // --------------------------------------------------------
+
     GET_LENGTH_INFORMATION lengthInformation{};
+
     DWORD bytesReturned = 0;
 
-    bool success = DeviceIoControl(
+    BOOL success = DeviceIoControl(
         deviceHandle,
         IOCTL_DISK_GET_LENGTH_INFO,
         nullptr,
@@ -414,19 +449,353 @@ static bool getDiskCapacity(
         nullptr
     );
 
+    if (success &&
+        lengthInformation.Length.QuadPart > 0)
+    {
+        capacityBytes =
+            static_cast<std::uint64_t>(
+                lengthInformation.Length.QuadPart
+            );
+
+        CloseHandle(deviceHandle);
+
+        std::cout
+            << "Capacity Source : IOCTL_DISK_GET_LENGTH_INFO\n";
+
+        return true;
+    }
+
+    DWORD firstError = GetLastError();
+
+
+    // --------------------------------------------------------
+    // METHOD 2
+    // IOCTL_DISK_GET_DRIVE_GEOMETRY_EX
+    // --------------------------------------------------------
+
+    std::vector<BYTE> geometryBuffer(
+        sizeof(DISK_GEOMETRY_EX) +
+        sizeof(DISK_PARTITION_INFO) +
+        sizeof(DISK_DETECTION_INFO)
+    );
+
+    bytesReturned = 0;
+
+    success = DeviceIoControl(
+        deviceHandle,
+        IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
+        nullptr,
+        0,
+        geometryBuffer.data(),
+        static_cast<DWORD>(geometryBuffer.size()),
+        &bytesReturned,
+        nullptr
+    );
+
+    if (success &&
+        bytesReturned >=
+            sizeof(DISK_GEOMETRY_EX))
+    {
+        auto geometry =
+            reinterpret_cast<DISK_GEOMETRY_EX*>(
+                geometryBuffer.data()
+            );
+
+        if (geometry->DiskSize.QuadPart > 0)
+        {
+            capacityBytes =
+                static_cast<std::uint64_t>(
+                    geometry->DiskSize.QuadPart
+                );
+
+            CloseHandle(deviceHandle);
+
+            std::cout
+                << "Capacity Source : IOCTL_DISK_GET_DRIVE_GEOMETRY_EX\n";
+
+            return true;
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // Both physical-disk queries failed
+    // --------------------------------------------------------
+
+    std::cout
+        << "Physical capacity query failed.\n";
+
+    std::cout
+        << "Length IOCTL error : "
+        << firstError
+        << "\n";
+
+
     CloseHandle(deviceHandle);
 
-    if (!success)
+    return false;
+}
+
+
+// ============================================================
+// Helper: Get capacity from a mounted volume belonging
+//         to the specified physical disk
+// ============================================================
+
+static bool getMountedVolumeCapacity(
+    DWORD targetPhysicalDiskNumber,
+    std::uint64_t& capacityBytes)
+{
+    capacityBytes = 0;
+
+    WCHAR volumeName[MAX_PATH]{};
+
+    HANDLE findHandle =
+        FindFirstVolumeW(
+            volumeName,
+            ARRAYSIZE(volumeName)
+        );
+
+    if (findHandle == INVALID_HANDLE_VALUE)
     {
         return false;
     }
 
-    capacityBytes =
-        static_cast<std::uint64_t>(
-            lengthInformation.Length.QuadPart
+
+    bool found = false;
+
+    while (true)
+    {
+        // ----------------------------------------------------
+        // Find mounted paths for this volume
+        // ----------------------------------------------------
+
+        DWORD pathBufferSize = MAX_PATH;
+
+        std::vector<WCHAR> pathBuffer(
+            pathBufferSize
         );
 
-    return true;
+        DWORD returnedLength = 0;
+
+        BOOL pathsSuccess =
+            GetVolumePathNamesForVolumeNameW(
+                volumeName,
+                pathBuffer.data(),
+                pathBufferSize,
+                &returnedLength
+            );
+
+        if (!pathsSuccess &&
+            GetLastError() == ERROR_MORE_DATA)
+        {
+            pathBufferSize =
+                returnedLength;
+
+            pathBuffer.resize(
+                pathBufferSize
+            );
+
+            pathsSuccess =
+                GetVolumePathNamesForVolumeNameW(
+                    volumeName,
+                    pathBuffer.data(),
+                    pathBufferSize,
+                    &returnedLength
+                );
+        }
+
+
+        if (pathsSuccess)
+        {
+            // ------------------------------------------------
+            // There can be multiple paths.
+            // We only need one usable drive-letter path.
+            // ------------------------------------------------
+
+            WCHAR* currentPath =
+                pathBuffer.data();
+
+            while (*currentPath != L'\0')
+            {
+                std::wstring mountedPath =
+                    currentPath;
+
+                // We want drive-letter paths like:
+                // C:\
+                // D:\
+                // F:\
+
+                if (mountedPath.size() >= 3 &&
+                    mountedPath[1] == L':' &&
+                    mountedPath[2] == L'\\')
+                {
+                    std::wstring devicePath =
+                        L"\\\\.\\";
+
+                    devicePath +=
+                        mountedPath.substr(
+                            0,
+                            2
+                        );
+
+                    HANDLE volumeHandle =
+                        CreateFileW(
+                            devicePath.c_str(),
+                            0,
+                            FILE_SHARE_READ |
+                            FILE_SHARE_WRITE,
+                            nullptr,
+                            OPEN_EXISTING,
+                            0,
+                            nullptr
+                        );
+
+                    if (volumeHandle !=
+                        INVALID_HANDLE_VALUE)
+                    {
+                        STORAGE_DEVICE_NUMBER
+                            storageDeviceNumber{};
+
+                        DWORD bytesReturned = 0;
+
+                        BOOL deviceNumberSuccess =
+                            DeviceIoControl(
+                                volumeHandle,
+                                IOCTL_STORAGE_GET_DEVICE_NUMBER,
+                                nullptr,
+                                0,
+                                &storageDeviceNumber,
+                                sizeof(storageDeviceNumber),
+                                &bytesReturned,
+                                nullptr
+                            );
+
+                        CloseHandle(volumeHandle);
+
+                        if (deviceNumberSuccess &&
+                            storageDeviceNumber.DeviceNumber ==
+                                targetPhysicalDiskNumber)
+                        {
+                            ULARGE_INTEGER
+                                freeBytesAvailable{};
+
+                            ULARGE_INTEGER
+                                totalBytes{};
+
+                            ULARGE_INTEGER
+                                totalFreeBytes{};
+
+                            BOOL spaceSuccess =
+                                GetDiskFreeSpaceExW(
+                                    mountedPath.c_str(),
+                                    &freeBytesAvailable,
+                                    &totalBytes,
+                                    &totalFreeBytes
+                                );
+
+                            if (spaceSuccess &&
+                                totalBytes.QuadPart > 0)
+                            {
+                                capacityBytes =
+                                    static_cast<std::uint64_t>(
+                                        totalBytes.QuadPart
+                                    );
+
+                                found = true;
+
+                                std::wcout
+                                    << L"Capacity Volume : "
+                                    << mountedPath
+                                    << L"\n";
+
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                currentPath +=
+                    wcslen(currentPath) + 1;
+            }
+        }
+
+
+        if (found)
+        {
+            break;
+        }
+
+
+        // ----------------------------------------------------
+        // Get next volume
+        // ----------------------------------------------------
+
+        if (!FindNextVolumeW(
+                findHandle,
+                volumeName,
+                ARRAYSIZE(volumeName)))
+        {
+            break;
+        }
+    }
+
+    FindVolumeClose(findHandle);
+
+    return found;
+}
+
+
+// ============================================================
+// Helper: Get disk capacity with fallbacks
+// ============================================================
+
+static bool getDiskCapacity(
+    const std::wstring& physicalDrivePath,
+    DWORD physicalDiskNumber,
+    std::uint64_t& capacityBytes)
+{
+    capacityBytes = 0;
+
+
+    // --------------------------------------------------------
+    // First try: physical disk
+    // --------------------------------------------------------
+
+    if (getPhysicalDiskCapacity(
+            physicalDrivePath,
+            capacityBytes))
+    {
+        return true;
+    }
+
+
+    // --------------------------------------------------------
+    // Fallback: mounted volume
+    // --------------------------------------------------------
+
+    std::cout
+        << "Trying mounted-volume capacity fallback...\n";
+
+    if (getMountedVolumeCapacity(
+            physicalDiskNumber,
+            capacityBytes))
+    {
+        std::cout
+            << "Capacity Source : Mounted Volume\n";
+
+        return true;
+    }
+
+
+    // --------------------------------------------------------
+    // Everything failed
+    // --------------------------------------------------------
+
+    std::cout
+        << "Capacity could not be determined.\n";
+
+    return false;
 }
 
 
@@ -434,19 +803,23 @@ static bool getDiskCapacity(
 // Helper: Find the PhysicalDrive containing Windows
 // ============================================================
 
-static bool getSystemDiskNumber(DWORD& systemDiskNumber)
+static bool getSystemDiskNumber(
+    DWORD& systemDiskNumber)
 {
     WCHAR windowsDirectory[MAX_PATH]{};
 
-    DWORD length = GetWindowsDirectoryW(
-        windowsDirectory,
-        MAX_PATH
-    );
+    DWORD length =
+        GetWindowsDirectoryW(
+            windowsDirectory,
+            MAX_PATH
+        );
 
-    if (length == 0 || length >= MAX_PATH)
+    if (length == 0 ||
+        length >= MAX_PATH)
     {
         return false;
     }
+
 
     WCHAR volumePath[MAX_PATH]{};
 
@@ -458,9 +831,13 @@ static bool getSystemDiskNumber(DWORD& systemDiskNumber)
         return false;
     }
 
-    std::wstring volumeDevicePath = L"\\\\.\\";
 
-    volumeDevicePath += volumePath;
+    std::wstring volumeDevicePath =
+        L"\\\\.\\";
+
+    volumeDevicePath +=
+        volumePath;
+
 
     if (!volumeDevicePath.empty() &&
         volumeDevicePath.back() == L'\\')
@@ -468,41 +845,51 @@ static bool getSystemDiskNumber(DWORD& systemDiskNumber)
         volumeDevicePath.pop_back();
     }
 
-    HANDLE volumeHandle = CreateFileW(
-        volumeDevicePath.c_str(),
-        0,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr,
-        OPEN_EXISTING,
-        0,
-        nullptr
-    );
+
+    HANDLE volumeHandle =
+        CreateFileW(
+            volumeDevicePath.c_str(),
+            0,
+            FILE_SHARE_READ |
+            FILE_SHARE_WRITE,
+            nullptr,
+            OPEN_EXISTING,
+            0,
+            nullptr
+        );
 
     if (volumeHandle == INVALID_HANDLE_VALUE)
     {
         return false;
     }
 
-    STORAGE_DEVICE_NUMBER storageDeviceNumber{};
+
+    STORAGE_DEVICE_NUMBER
+        storageDeviceNumber{};
+
     DWORD bytesReturned = 0;
 
-    bool success = DeviceIoControl(
-        volumeHandle,
-        IOCTL_STORAGE_GET_DEVICE_NUMBER,
-        nullptr,
-        0,
-        &storageDeviceNumber,
-        sizeof(storageDeviceNumber),
-        &bytesReturned,
-        nullptr
-    );
+    bool success =
+        DeviceIoControl(
+            volumeHandle,
+            IOCTL_STORAGE_GET_DEVICE_NUMBER,
+            nullptr,
+            0,
+            &storageDeviceNumber,
+            sizeof(storageDeviceNumber),
+            &bytesReturned,
+            nullptr
+        );
+
 
     CloseHandle(volumeHandle);
+
 
     if (!success)
     {
         return false;
     }
+
 
     systemDiskNumber =
         storageDeviceNumber.DeviceNumber;
@@ -526,15 +913,23 @@ WindowsStorageDiscovery::discover()
     // Directly ask Windows for PRESENT DISK INTERFACES
     // ========================================================
 
-    HDEVINFO deviceInfoSet = SetupDiGetClassDevsW(
-        &GUID_DEVINTERFACE_DISK,
-        nullptr,
-        nullptr,
-        DIGCF_PRESENT | DIGCF_DEVICEINTERFACE
-    );
+    HDEVINFO deviceInfoSet =
+        SetupDiGetClassDevsW(
+            &GUID_DEVINTERFACE_DISK,
+            nullptr,
+            nullptr,
+            DIGCF_PRESENT |
+            DIGCF_DEVICEINTERFACE
+        );
 
-    if (deviceInfoSet == INVALID_HANDLE_VALUE)
+    if (deviceInfoSet ==
+        INVALID_HANDLE_VALUE)
     {
+        std::cerr
+            << "SetupDiGetClassDevsW failed. Error = "
+            << GetLastError()
+            << "\n";
+
         return devices;
     }
 
@@ -547,7 +942,22 @@ WindowsStorageDiscovery::discover()
     DWORD systemDiskNumber = 0;
 
     bool hasSystemDiskNumber =
-        getSystemDiskNumber(systemDiskNumber);
+        getSystemDiskNumber(
+            systemDiskNumber
+        );
+
+    if (hasSystemDiskNumber)
+    {
+        std::cout
+            << "System Disk Number: "
+            << systemDiskNumber
+            << "\n";
+    }
+    else
+    {
+        std::cout
+            << "Could not determine System Disk Number.\n";
+    }
 
 
     // ========================================================
@@ -557,7 +967,8 @@ WindowsStorageDiscovery::discover()
 
     for (DWORD index = 0; ; ++index)
     {
-        SP_DEVICE_INTERFACE_DATA interfaceData{};
+        SP_DEVICE_INTERFACE_DATA
+            interfaceData{};
 
         interfaceData.cbSize =
             sizeof(SP_DEVICE_INTERFACE_DATA);
@@ -596,6 +1007,7 @@ WindowsStorageDiscovery::discover()
             nullptr
         );
 
+
         if (requiredSize == 0)
         {
             std::cout
@@ -610,7 +1022,8 @@ WindowsStorageDiscovery::discover()
         // Allocate buffer
         // ====================================================
 
-        std::vector<BYTE> buffer(requiredSize);
+        std::vector<BYTE>
+            buffer(requiredSize);
 
 
         // ====================================================
@@ -625,8 +1038,11 @@ WindowsStorageDiscovery::discover()
                 buffer.data()
             );
 
+
         detailData->cbSize =
-            sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W);
+            sizeof(
+                SP_DEVICE_INTERFACE_DETAIL_DATA_W
+            );
 
 
         // ====================================================
@@ -666,6 +1082,7 @@ WindowsStorageDiscovery::discover()
 
         DWORD physicalDiskNumber = 0;
 
+
         if (!getPhysicalDriveNumber(
                 deviceInterfacePath,
                 physicalDiskNumber))
@@ -684,7 +1101,9 @@ WindowsStorageDiscovery::discover()
 
         std::wstring physicalDrivePath =
             L"\\\\.\\PhysicalDrive" +
-            std::to_wstring(physicalDiskNumber);
+            std::to_wstring(
+                physicalDiskNumber
+            );
 
 
         std::wcout
@@ -698,19 +1117,34 @@ WindowsStorageDiscovery::discover()
         // Get model, serial, interface and removable state
         // ====================================================
 
-        std::string model = "Unknown";
-        std::string serialNumber = "Unknown";
-        std::string interfaceType = "Unknown";
+        std::string model =
+            "Unknown";
 
-        bool isRemovable = false;
+        std::string serialNumber =
+            "Unknown";
 
-        getStorageDescriptor(
-            physicalDrivePath,
-            model,
-            serialNumber,
-            interfaceType,
-            isRemovable
-        );
+        std::string interfaceType =
+            "Unknown";
+
+        bool isRemovable =
+            false;
+
+
+        bool hasStorageDescriptor =
+            getStorageDescriptor(
+                physicalDrivePath,
+                model,
+                serialNumber,
+                interfaceType,
+                isRemovable
+            );
+
+
+        if (!hasStorageDescriptor)
+        {
+            std::cout
+                << "Storage descriptor could not be read.\n";
+        }
 
 
         // ====================================================
@@ -718,12 +1152,23 @@ WindowsStorageDiscovery::discover()
         // Get capacity
         // ====================================================
 
-        std::uint64_t capacityBytes = 0;
+        std::uint64_t capacityBytes =
+            0;
 
-        getDiskCapacity(
-            physicalDrivePath,
-            capacityBytes
-        );
+
+        bool hasCapacity =
+            getDiskCapacity(
+                physicalDrivePath,
+                physicalDiskNumber,
+                capacityBytes
+            );
+
+
+        if (!hasCapacity)
+        {
+            std::cout
+                << "Capacity       : UNKNOWN\n";
+        }
 
 
         // ====================================================
@@ -731,12 +1176,22 @@ WindowsStorageDiscovery::discover()
         // Get seek penalty
         // ====================================================
 
-        bool hasSeekPenalty = false;
+        bool hasSeekPenalty =
+            false;
 
-        getSeekPenalty(
-            physicalDrivePath,
-            hasSeekPenalty
-        );
+
+        bool hasSeekPenaltyInfo =
+            getSeekPenalty(
+                physicalDrivePath,
+                hasSeekPenalty
+            );
+
+
+        if (!hasSeekPenaltyInfo)
+        {
+            std::cout
+                << "Seek penalty information unavailable.\n";
+        }
 
 
         // ====================================================
@@ -746,7 +1201,8 @@ WindowsStorageDiscovery::discover()
 
         bool isSystemDisk =
             hasSystemDiskNumber &&
-            physicalDiskNumber == systemDiskNumber;
+            physicalDiskNumber ==
+                systemDiskNumber;
 
 
         // ====================================================
@@ -755,7 +1211,9 @@ WindowsStorageDiscovery::discover()
         // ====================================================
 
         std::string deviceId =
-            wideToString(physicalDrivePath);
+            wideToString(
+                physicalDrivePath
+            );
 
 
         // ====================================================
@@ -795,30 +1253,44 @@ WindowsStorageDiscovery::discover()
             << model
             << "\n";
 
+
         std::cout
             << "Serial Number  : "
             << serialNumber
             << "\n";
 
-        std::cout
-            << "Capacity       : "
-            << capacityBytes
-            << " bytes\n";
+
+        if (hasCapacity)
+        {
+            std::cout
+                << "Capacity       : "
+                << capacityBytes
+                << " bytes\n";
+        }
+        else
+        {
+            std::cout
+                << "Capacity       : UNKNOWN\n";
+        }
+
 
         std::cout
             << "Interface Type : "
             << interfaceType
             << "\n";
 
+
         std::cout
             << "System Disk    : "
             << (isSystemDisk ? "YES" : "NO")
             << "\n";
 
+
         std::cout
             << "Removable      : "
             << (isRemovable ? "YES" : "NO")
             << "\n";
+
 
         std::cout
             << "Seek Penalty   : "

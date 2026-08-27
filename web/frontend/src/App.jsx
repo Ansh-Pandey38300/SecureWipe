@@ -25,6 +25,10 @@ import WorkstationEmployeeDashboard from "./pages/WorkstationEmployee/Dashboard/
 
 import CustomerDashboard from "./pages/Customer/Dashboard/CustomerDashboard";
 
+import CustomerSanitizationRequest from "./pages/Customer/SanitizationRequest/CustomerSanitizationRequest";
+
+
+
 function App() {
     return (
         <BrowserRouter>
@@ -81,6 +85,7 @@ function App() {
                                     <AdminWorkstationCenters />
                                 }
                             />
+
                         </Route>
                     </Route>
 
@@ -155,6 +160,12 @@ function App() {
                                 path="dashboard"
                                 element={
                                     <CustomerDashboard />
+                                }
+                            />
+                            <Route
+                                path="sanitization-request"
+                                element={
+                                    <CustomerSanitizationRequest />
                                 }
                             />
                         </Route>
