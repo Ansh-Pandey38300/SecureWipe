@@ -1,8 +1,16 @@
-add_library(SecureWipeStorage
+add_library(
+  SecureWipeStorage
+
   storage/src/StorageDevice.cpp
   storage/src/StorageManager.cpp
+
   discovery/src/WindowsStorageDiscovery.cpp
+
   classification/src/DeviceClassifier.cpp
+
+  safety/src/BootInfo.cpp
+  safety/src/WindowsBootChecker.cpp
+#   safety/src/SafetyEngine.cpp
 )
 
 target_include_directories(
@@ -11,12 +19,16 @@ target_include_directories(
     storage/include
     discovery/include
     classification/include
+    safety/include
+
+
 )
 
 if(WIN32)
     target_link_libraries(
         SecureWipeStorage
         PUBLIC
+            wbemuuid
             setupapi
     )
 endif()
@@ -41,11 +53,23 @@ add_executable(
     tests/DeviceClassifierTest.cpp
 )
 
+add_executable(
+    WindowsBootCheckerTest
+    tests/WindowsBootCheckerTest.cpp
+)
+
+# add_executable(
+#     SafetyEngineTest
+#     tests/SafetyEngineTest.cpp
+# )
+
 set(STORAGE_TESTS
     StorageDeviceTest
     StorageManagerTest
     WindowsStorageDiscoveryTest
     DeviceClassifierTest
+    WindowsBootCheckerTest
+    # SafetyEngineTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)
@@ -56,6 +80,7 @@ target_include_directories(
         storage/include
         discovery/include
         classification/include
+        safety/include
 )
 
 target_link_libraries(

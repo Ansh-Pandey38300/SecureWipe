@@ -1,56 +1,144 @@
+#include <Windows.h>
+#include <iostream>
 #include "SafetyEngine.h"
+#include "WindowsStorageUtils.h"
 
-//Save the copy of the device selected by the user from the frontend
+// Save the copy of the device selected by the user from the frontend
 
-void SafetyEngine::setExpectedTarget(const StorageDevice&device){
+void SafetyEngine::setExpectedTarget(const StorageDevice &device)
+{
 
-    expectedTarget_.deviceId=device.getDeviceId();
+    expectedTarget_.deviceId = device.getDeviceId();
 
-    expectedTarget_.model=device.getModel();
+    expectedTarget_.model = device.getModel();
 
-    expectedTarget_.serialNumber=device.getSerialNumber();
+    expectedTarget_.serialNumber = device.getSerialNumber();
 
-     expectedTarget_.capacityBytes =device.getCapacityBytes();
+    expectedTarget_.capacityBytes = device.getCapacityBytes();
 
-   hasExpectedTarget_=true;
+    hasExpectedTarget_ = true;
 }
 
-//Find the selected device from freshly 
-// //discovered devices
-// bool SafetyEngine::findTarget(const std::vector<StorageDevice>& devices,StorageDevice& target){
-//      if(!hasExpectedTarget_)return false;
-
-
-//     }
-
 // Check 1: Current System Disk
-bool checkSystemDisk(const StorageDevice &device)
+bool SafetyEngine::checkSystemDisk(const StorageDevice &device)
 {
     if (device.isSystemDisk())
         return false;
     return true;
 }
 
-// Check 2: Current Boot Dependency
-bool checkBootDependency(const StorageDevice &device)
-{
-    return true;
-}
+// // Check 2: Current Boot Dependency
+// bool SafetyEngine::checkBootDependency(const StorageDevice &device)
+// {
+//     return true;
+// }
 
 // Check 3: Mounted / In-use Volumes
-bool checkMountedVolume(const StorageDevice &device)
+// target device ke volumes currently use/mounted toh nahi hain?
+bool SafetyEngine::checkMountedVolume(
+    const StorageDevice &device)
 {
-    return true;
-}
+    DWORD targetDiskNumber = 0;
 
-// Check 4: OS Dependencies
-bool checkOSDependencies(const StorageDevice &device)
-{
+    if (!WindowsStorageUtils::getDiskNumberFromDeviceId(
+            device.getDeviceId(),
+            targetDiskNumber))
+    {
+        return false;
+    }
+
+    WCHAR volumeName[MAX_PATH]{};
+
+    HANDLE findHandle =
+        FindFirstVolumeW(
+            volumeName,
+            ARRAYSIZE(volumeName));
+
+    if (findHandle == INVALID_HANDLE_VALUE)
+    {
+        return false;
+    }
+
+    while (true)
+    {
+        DWORD pathBufferSize = MAX_PATH;
+
+        std::vector<WCHAR> pathBuffer(
+            pathBufferSize);
+
+        DWORD returnedLength = 0;
+
+        BOOL pathsSuccess =
+            GetVolumePathNamesForVolumeNameW(
+                volumeName,
+                pathBuffer.data(),
+                pathBufferSize,
+                &returnedLength);
+
+        if (pathsSuccess)
+        {
+            WCHAR *currentPath =
+                pathBuffer.data();
+
+            while (*currentPath != L'\0')
+            {
+                std::wstring mountedPath =
+                    currentPath;
+
+                if (mountedPath.size() >= 3 &&
+                    mountedPath[1] == L':' &&
+                    mountedPath[2] == L'\\')
+                {
+                    // Example:
+                    // mountedPath = E:\
+                    // drive       = E:
+
+                    std::wstring drive =
+                        mountedPath.substr(0, 2);
+
+                    DWORD volumeDiskNumber = 0;
+                    DWORD partitionNumber = 0;
+
+                    if (WindowsStorageUtils::getPhysicalDisk(
+                            drive,
+                            volumeDiskNumber,
+                            partitionNumber))
+                    {
+                        if (volumeDiskNumber ==
+                            targetDiskNumber)
+                        {
+                            FindVolumeClose(
+                                findHandle);
+
+                            std::cout
+                                << "Mounted volume found on target disk\n";
+
+                            return false;
+                        }
+                    }
+                }
+
+                currentPath +=
+                    wcslen(currentPath) + 1;
+            }
+        }
+
+        if (!FindNextVolumeW(
+                findHandle,
+                volumeName,
+                ARRAYSIZE(volumeName)))
+        {
+            break;
+        }
+    }
+
+    FindVolumeClose(findHandle);
+
     return true;
 }
 
 // Check 5: Physical Device Validation
-bool checkPhysicalDevice(const StorageDevice &device)
+bool SafetyEngine::checkPhysicalDevice(const StorageDevice &device)
 {
 
     /*
@@ -91,8 +179,11 @@ bool checkPhysicalDevice(const StorageDevice &device)
 }
 
 // Check 6: Target Identity
-bool checkTargetIdentity(const StorageDevice &device)
+bool SafetyEngine::checkTargetIdentity(const StorageDevice &device)
 {
+    if (!hasExpectedTarget_)
+        return false;
+
     /*
     Check that the selected target has enough information
     to identify it correctly before sanitization.
@@ -101,24 +192,36 @@ bool checkTargetIdentity(const StorageDevice &device)
     when the target cannot be clearly identified.
     */
 
-    if (device.getDeviceId() !=expectedTarget_.deviceId)
+    if (device.getDeviceId() != expectedTarget_.deviceId)
         return false;
 
-
-    if (device.getModel() !=expectedTarget_.model)
+    if (device.getModel() != expectedTarget_.model)
         return false;
 
-    if (device.getSerialNumber() !=expectedTarget_.serialNumber)
+    if (device.getSerialNumber() != expectedTarget_.serialNumber)
         return false;
-    
 
-    if (device.getCapacityBytes() !=expectedTarget_.capacityBytes)
+    if (device.getCapacityBytes() != expectedTarget_.capacityBytes)
         return false;
 
     return true;
 }
 
+bool SafetyEngine::validateTarget(const std::vector<StorageDevice> &devices, StorageDevice &target)
+{
+    if (!hasExpectedTarget_)
+        return false;
 
+    for (std::size_t i = 0; i < devices.size(); ++i)
+    {
+        if (checkTargetIdentity(devices[i]))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 bool SafetyEngine::evaluate(const StorageDevice &device)
 {
@@ -126,16 +229,12 @@ bool SafetyEngine::evaluate(const StorageDevice &device)
     if (!checkSystemDisk(device))
         return false;
 
-    // Check 2:
-    if (!checkBootDependency(device))
-        return false;
+    // // Check 2:
+    // if (!checkBootDependency(device))
+    //     return false;
 
     // Check 3:
     if (!checkMountedVolume(device))
-        return false;
-
-    // Check 4:
-    if (!checkOSDependencies(device))
         return false;
 
     // Check 5:
