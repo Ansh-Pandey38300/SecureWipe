@@ -20,7 +20,9 @@ Only the first four steps exist right now.
 
 **WindowsStorageDiscovery** — this is where it gets more interesting. Early attempts only enumerated device info using SetupAPI (`SetupDiGetClassDevs`, `SetupDiEnumDeviceInfo`) without pulling real properties. As of Aug 25 this was pushed further: SecureWipe can now discover actual physical storage devices connected to a Windows machine and build real `StorageDevice` objects from them — not just test/sample data anymore. That's a meaningful milestone.
 
-**DeviceClassifier** — just started. The goal is to take what's known about a device and classify its media type (HDD/SSD/Unknown), bus type (SATA/NVMe/USB/SAS/Unknown), and device type (Internal/Removable/Unknown). Right now it's mostly scaffolding — media type and device type detection are still incomplete, since interface type alone isn't a reliable enough signal to tell HDD from SSD, and system-disk status alone doesn't reliably tell removable from internal. More raw properties will need to be pulled from Windows to make this classification trustworthy.
+**DeviceClassifier** — the classifier now has working logic for bus type, device type, and media type, built using the properties StorageDevice already collects. It's not proven reliable across many device types yet.
+
+Note: media type (HDD vs SSD) is currently detected using "seek penalty" as the signal. This is a working heuristic for now, not a guaranteed-correct method — worth remembering if anyone asks how HDD/SSD detection actually works.
 
 ## Build setup
 CMake project with a `SecureWipeStorage` library target, public include directories configured, and separate test executables for StorageDevice and StorageManager. Got this working after sorting out a handful of the usual CMake headaches — include paths not found, wrong executable path, a stream-operator typo in the manager test, a `cbSize()` vs `cbSize` mistake in the discovery code.

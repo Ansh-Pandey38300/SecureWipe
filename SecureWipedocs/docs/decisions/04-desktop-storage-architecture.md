@@ -16,3 +16,5 @@ Two rules apply across the whole pipeline going forward:
 **Explainable decisions** — the eventual decision engine won't just say ALLOW/WARN/BLOCK, it will say why (e.g. "target is the active system disk," "boot partition detected").
 
 Also decided early on: destructive sanitization logic will not be built first. Device detection and identification come first, specifically so the system can safely understand what it's looking at before anything destructive is even possible.
+
+DeviceClassifier only describes a device — it does not decide whether that device is safe to wipe. That decision belongs entirely to SafetyEngine. The system will store an expected target identity and re-check it against a freshly discovered device immediately before sanitization, to avoid wiping the wrong device after selection. Boot/EFI/system-disk relationships are treated as a safety concern, not just another classification property.
