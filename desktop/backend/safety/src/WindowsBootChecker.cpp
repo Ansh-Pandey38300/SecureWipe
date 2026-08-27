@@ -4,238 +4,101 @@
 #include <Wbemidl.h>
 #include <winioctl.h>
 
-#include <iostream>
 #include <string>
+#include <iostream>
 
 #pragma comment(lib, "wbemuuid.lib")
 
 
-// ============================================================
-// Convert std::wstring to std::string
-// ============================================================
+// ------------------------------------------------------------
+// Convert wide string to normal string
+// ------------------------------------------------------------
 
-std::string wideToString(const std::wstring& value)
+std::string wideToString(std::wstring value)
 {
     if (value.empty())
     {
         return "";
     }
 
-    int size = WideCharToMultiByte(
-        CP_UTF8,
-        0,
-        value.c_str(),
-        -1,
-        nullptr,
-        0,
-        nullptr,
-        nullptr
-    );
+    int size =
+        WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            value.c_str(),
+            -1,
+            nullptr,
+            0,
+            nullptr,
+            nullptr);
 
     if (size <= 0)
     {
         return "";
     }
 
-    std::string result(size, '\0');
+    char* buffer =
+        new char[size];
 
     WideCharToMultiByte(
         CP_UTF8,
         0,
         value.c_str(),
         -1,
-        &result[0],
+        buffer,
         size,
         nullptr,
-        nullptr
-    );
+        nullptr);
 
-    // Remove terminating '\0'
-    if (!result.empty() && result.back() == '\0')
-    {
-        result.pop_back();
-    }
+    std::string result =
+        buffer;
+
+    delete[] buffer;
 
     return result;
 }
 
 
-// ============================================================
-// Enable a Windows privilege
-// ============================================================
-
-bool enablePrivilege(const wchar_t* privilegeName)
-{
-    HANDLE tokenHandle = nullptr;
-
-
-    // --------------------------------------------------------
-    // Open current process token
-    // --------------------------------------------------------
-
-    if (!OpenProcessToken(
-            GetCurrentProcess(),
-            TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
-            &tokenHandle))
-    {
-        std::cout
-            << "OpenProcessToken failed. Error: "
-            << GetLastError()
-            << std::endl;
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Find privilege LUID
-    // --------------------------------------------------------
-
-    LUID privilegeLuid{};
-
-
-    if (!LookupPrivilegeValueW(
-            nullptr,
-            privilegeName,
-            &privilegeLuid))
-    {
-        std::cout
-            << "LookupPrivilegeValueW failed. Error: "
-            << GetLastError()
-            << std::endl;
-
-        CloseHandle(tokenHandle);
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Prepare privilege structure
-    // --------------------------------------------------------
-
-    TOKEN_PRIVILEGES privileges{};
-
-    privileges.PrivilegeCount = 1;
-
-    privileges.Privileges[0].Luid =
-        privilegeLuid;
-
-    privileges.Privileges[0].Attributes =
-        SE_PRIVILEGE_ENABLED;
-
-
-    // --------------------------------------------------------
-    // Enable privilege
-    // --------------------------------------------------------
-
-    if (!AdjustTokenPrivileges(
-            tokenHandle,
-            FALSE,
-            &privileges,
-            sizeof(TOKEN_PRIVILEGES),
-            nullptr,
-            nullptr))
-    {
-        DWORD error = GetLastError();
-
-        std::cout
-            << "AdjustTokenPrivileges failed. Error: "
-            << error
-            << std::endl;
-
-        CloseHandle(tokenHandle);
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // IMPORTANT:
-    //
-    // AdjustTokenPrivileges can return TRUE even when
-    // the privilege is not present in the token.
-    // --------------------------------------------------------
-
-    DWORD error = GetLastError();
-
-
-    CloseHandle(tokenHandle);
-
-
-    if (error == ERROR_NOT_ALL_ASSIGNED)
-    {
-        std::cout
-            << "Privilege is not present in this process token: "
-            << wideToString(privilegeName)
-            << std::endl;
-
-        return false;
-    }
-
-
-    return true;
-}
-
-
-// ============================================================
+// ------------------------------------------------------------
 // Get Windows directory
 //
 // Example:
-//
 // C:\Windows
-// ============================================================
+// ------------------------------------------------------------
 
 bool getWindowsDirectory(
     std::wstring& windowsDirectory)
 {
     wchar_t buffer[MAX_PATH] = {};
 
-
     UINT length =
         GetWindowsDirectoryW(
             buffer,
-            MAX_PATH
-        );
+            MAX_PATH);
 
-
-    if (length == 0)
-    {
-        std::cout
-            << "GetWindowsDirectoryW failed. Error: "
-            << GetLastError()
-            << std::endl;
-
-        return false;
-    }
-
-
-    if (length >= MAX_PATH)
+    if (length == 0 ||
+        length >= MAX_PATH)
     {
         return false;
     }
-
 
     windowsDirectory =
         buffer;
-
 
     return true;
 }
 
 
-// ============================================================
+// ------------------------------------------------------------
 // Get Windows drive
 //
 // C:\Windows
-//
-// becomes:
-//
+//     ↓
 // C:
-// ============================================================
+// ------------------------------------------------------------
 
 bool getWindowsDrive(
-    const std::wstring& windowsDirectory,
+    std::wstring windowsDirectory,
     std::wstring& windowsDrive)
 {
     if (windowsDirectory.size() < 2)
@@ -243,126 +106,92 @@ bool getWindowsDrive(
         return false;
     }
 
-
     if (windowsDirectory[1] != L':')
     {
         return false;
     }
 
-
     windowsDrive =
-        windowsDirectory.substr(
-            0,
-            2
-        );
-
+        windowsDirectory.substr(0, 2);
 
     return true;
 }
 
 
-// ============================================================
+// ------------------------------------------------------------
 // Get volume GUID
 //
 // C:
-//
-// becomes:
-//
+// ↓
 // \\?\Volume{GUID}\
-// ============================================================
+// ------------------------------------------------------------
 
 bool getVolumeGuid(
-    const std::wstring& drive,
+    std::wstring drive,
     std::wstring& volumeGuid)
 {
     std::wstring mountPoint =
         drive + L"\\";
 
-
     wchar_t buffer[MAX_PATH] = {};
-
 
     BOOL result =
         GetVolumeNameForVolumeMountPointW(
             mountPoint.c_str(),
             buffer,
-            MAX_PATH
-        );
-
+            MAX_PATH);
 
     if (!result)
     {
-        std::cout
-            << "GetVolumeNameForVolumeMountPointW failed. Error: "
-            << GetLastError()
-            << std::endl;
-
         return false;
     }
 
-
     volumeGuid =
         buffer;
-
 
     return true;
 }
 
 
-// ============================================================
-// Map Windows drive to physical disk
+// ------------------------------------------------------------
+// Get physical disk from a volume
 //
 // C:
-//  |
-//  v
+// ↓
 // \\.\C:
-//  |
-//  v
+// ↓
 // IOCTL_STORAGE_GET_DEVICE_NUMBER
-//  |
-//  v
+// ↓
 // PhysicalDrive0
-// ============================================================
+// ------------------------------------------------------------
 
 bool getPhysicalDisk(
-    const std::wstring& drive,
+    std::wstring drive,
     DWORD& diskNumber,
     DWORD& partitionNumber)
 {
     std::wstring devicePath =
         L"\\\\.\\" + drive;
 
-
     HANDLE handle =
         CreateFileW(
             devicePath.c_str(),
             0,
             FILE_SHARE_READ |
-            FILE_SHARE_WRITE,
+                FILE_SHARE_WRITE,
             nullptr,
             OPEN_EXISTING,
             0,
-            nullptr
-        );
-
+            nullptr);
 
     if (handle == INVALID_HANDLE_VALUE)
     {
-        std::cout
-            << "CreateFileW failed for "
-            << wideToString(drive)
-            << ". Error: "
-            << GetLastError()
-            << std::endl;
-
         return false;
     }
-
 
     STORAGE_DEVICE_NUMBER deviceNumber = {};
 
     DWORD bytesReturned = 0;
-
 
     BOOL result =
         DeviceIoControl(
@@ -373,135 +202,46 @@ bool getPhysicalDisk(
             &deviceNumber,
             sizeof(deviceNumber),
             &bytesReturned,
-            nullptr
-        );
-
+            nullptr);
 
     CloseHandle(handle);
 
-
     if (!result)
     {
-        std::cout
-            << "DeviceIoControl failed. Error: "
-            << GetLastError()
-            << std::endl;
-
         return false;
     }
-
 
     diskNumber =
         deviceNumber.DeviceNumber;
 
-
     partitionNumber =
         deviceNumber.PartitionNumber;
-
 
     return true;
 }
 
 
-// ============================================================
+// ------------------------------------------------------------
 // Initialize WMI
-// ============================================================
+// ------------------------------------------------------------
 
 bool initializeWmi(
     IWbemLocator*& locator,
     IWbemServices*& services)
 {
     locator = nullptr;
-
     services = nullptr;
-
-
-    // --------------------------------------------------------
-    // Enable Backup privilege
-    // --------------------------------------------------------
-
-    std::cout
-        << "Enabling Backup privilege..."
-        << std::endl;
-
-
-    if (!enablePrivilege(
-            L"SeBackupPrivilege"))
-    {
-        std::cout
-            << "SeBackupPrivilege could not be enabled."
-            << std::endl;
-
-        std::cout
-            << "Run this program from an elevated "
-               "Administrator terminal."
-            << std::endl;
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Enable Restore privilege
-    // --------------------------------------------------------
-
-    std::cout
-        << "Enabling Restore privilege..."
-        << std::endl;
-
-
-    if (!enablePrivilege(
-            L"SeRestorePrivilege"))
-    {
-        std::cout
-            << "SeRestorePrivilege could not be enabled."
-            << std::endl;
-
-        std::cout
-            << "Run this program from an elevated "
-               "Administrator terminal."
-            << std::endl;
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Initialize COM
-    // --------------------------------------------------------
-
-    std::cout
-        << "Initializing COM..."
-        << std::endl;
-
 
     HRESULT result =
         CoInitializeEx(
             nullptr,
-            COINIT_MULTITHREADED
-        );
-
-
-    bool comInitialized = SUCCEEDED(result);
-
+            COINIT_MULTITHREADED);
 
     if (FAILED(result) &&
         result != RPC_E_CHANGED_MODE)
     {
-        std::cout
-            << "CoInitializeEx failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
         return false;
     }
-
-
-    // --------------------------------------------------------
-    // Initialize COM security
-    // --------------------------------------------------------
 
     result =
         CoInitializeSecurity(
@@ -513,37 +253,15 @@ bool initializeWmi(
             RPC_C_IMP_LEVEL_IMPERSONATE,
             nullptr,
             EOAC_NONE,
-            nullptr
-        );
-
+            nullptr);
 
     if (FAILED(result) &&
         result != RPC_E_TOO_LATE)
     {
-        std::cout
-            << "CoInitializeSecurity failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
+        CoUninitialize();
 
         return false;
     }
-
-
-    // --------------------------------------------------------
-    // Create WMI locator
-    // --------------------------------------------------------
-
-    std::cout
-        << "Creating WMI locator..."
-        << std::endl;
-
 
     result =
         CoCreateInstance(
@@ -552,58 +270,27 @@ bool initializeWmi(
             CLSCTX_INPROC_SERVER,
             IID_IWbemLocator,
             reinterpret_cast<void**>(
-                &locator
-            )
-        );
-
+                &locator));
 
     if (FAILED(result))
     {
-        std::cout
-            << "CoCreateInstance failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
+        CoUninitialize();
 
         return false;
     }
 
-
-    // --------------------------------------------------------
-    // Connect to ROOT\WMI
-    // --------------------------------------------------------
-
-    std::cout
-        << "Connecting to ROOT\\WMI..."
-        << std::endl;
-
-
     BSTR namespaceName =
         SysAllocString(
-            L"ROOT\\WMI"
-        );
-
+            L"ROOT\\WMI");
 
     if (namespaceName == nullptr)
     {
         locator->Release();
 
-        locator = nullptr;
-
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
+        CoUninitialize();
 
         return false;
     }
-
 
     result =
         locator->ConnectServer(
@@ -614,45 +301,19 @@ bool initializeWmi(
             0,
             nullptr,
             nullptr,
-            &services
-        );
-
+            &services);
 
     SysFreeString(
-        namespaceName
-    );
-
+        namespaceName);
 
     if (FAILED(result))
     {
-        std::cout
-            << "ConnectServer failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
         locator->Release();
 
-        locator = nullptr;
-
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
+        CoUninitialize();
 
         return false;
     }
-
-
-    // --------------------------------------------------------
-    // Set WMI impersonation
-    // --------------------------------------------------------
-
-    std::cout
-        << "Setting WMI impersonation..."
-        << std::endl;
-
 
     result =
         CoSetProxyBlanket(
@@ -663,550 +324,118 @@ bool initializeWmi(
             RPC_C_AUTHN_LEVEL_CALL,
             RPC_C_IMP_LEVEL_IMPERSONATE,
             nullptr,
-            EOAC_NONE
-        );
-
+            EOAC_NONE);
 
     if (FAILED(result))
     {
-        std::cout
-            << "CoSetProxyBlanket failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
         services->Release();
-
         locator->Release();
 
-        services = nullptr;
-
-        locator = nullptr;
-
-        if (comInitialized)
-        {
-            CoUninitialize();
-        }
+        CoUninitialize();
 
         return false;
     }
-
-
-    std::cout
-        << "WMI initialized successfully."
-        << std::endl;
-
 
     return true;
 }
 
 
-// ============================================================
-// Get SYSTEM BCD store
+// ------------------------------------------------------------
+// Get BCD system partition
 //
-// Flow:
+// System BCD store:
 //
-// BcdStore
-//     |
-//     v
-// OpenStore("")
-//     |
-//     v
-// System BCD Store
-//     |
-//     v
+// BcdStore.FilePath=""
+//
+// Then:
+//
 // GetSystemPartition()
-// ============================================================
+//
+// returns a device path such as:
+//
+// \Device\HarddiskVolume2
+// ------------------------------------------------------------
 
 bool getSystemPartitionFromBcd(
     IWbemServices* services,
     std::wstring& partitionPath)
 {
-    partitionPath = L"";
-
+    partitionPath.clear();
 
     if (services == nullptr)
     {
         return false;
     }
 
+    /*
+     * Open the system BCD store directly.
+     *
+     * We no longer depend on reading __PATH from
+     * an object returned by OpenStore().
+     */
 
-    // --------------------------------------------------------
-    // Get BcdStore class
-    // --------------------------------------------------------
+    BSTR objectPath =
+        SysAllocString(
+            L"BcdStore.FilePath=\"\"");
 
-    IWbemClassObject* bcdStoreClass =
+    BSTR methodName =
+        SysAllocString(
+            L"GetSystemPartition");
+
+    if (objectPath == nullptr ||
+        methodName == nullptr)
+    {
+        if (objectPath != nullptr)
+        {
+            SysFreeString(
+                objectPath);
+        }
+
+        if (methodName != nullptr)
+        {
+            SysFreeString(
+                methodName);
+        }
+
+        return false;
+    }
+
+    IWbemClassObject* output =
         nullptr;
 
+    /*
+     * IWbemServices::ExecMethod has 7 parameters:
+     *
+     * objectPath
+     * methodName
+     * flags
+     * context
+     * inputParameters
+     * outputParameters
+     * callResult
+     */
 
     HRESULT result =
-        services->GetObject(
-            L"BcdStore",
-            0,
-            nullptr,
-            &bcdStoreClass,
-            nullptr
-        );
-
-
-    if (FAILED(result))
-    {
-        std::cout
-            << "GetObject(BcdStore) failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Get OpenStore method
-    // --------------------------------------------------------
-
-    IWbemClassObject* inputDefinition =
-        nullptr;
-
-    IWbemClassObject* outputDefinition =
-        nullptr;
-
-
-    result =
-        bcdStoreClass->GetMethod(
-            L"OpenStore",
-            0,
-            &inputDefinition,
-            &outputDefinition
-        );
-
-
-    if (FAILED(result))
-    {
-        std::cout
-            << "GetMethod(OpenStore) failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        bcdStoreClass->Release();
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Create input object
-    // --------------------------------------------------------
-
-    IWbemClassObject* inputObject =
-        nullptr;
-
-
-    result =
-        inputDefinition->SpawnInstance(
-            0,
-            &inputObject
-        );
-
-
-    if (FAILED(result))
-    {
-        std::cout
-            << "SpawnInstance failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        inputDefinition->Release();
-
-        outputDefinition->Release();
-
-        bcdStoreClass->Release();
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Empty string = system BCD store
-    // --------------------------------------------------------
-
-    VARIANT file;
-
-    VariantInit(&file);
-
-
-    file.vt =
-        VT_BSTR;
-
-
-    file.bstrVal =
-        SysAllocString(L"");
-
-
-    if (file.bstrVal == nullptr)
-    {
-        inputObject->Release();
-
-        inputDefinition->Release();
-
-        outputDefinition->Release();
-
-        bcdStoreClass->Release();
-
-        return false;
-    }
-
-
-    result =
-        inputObject->Put(
-            L"File",
-            0,
-            &file,
-            0
-        );
-
-
-    VariantClear(&file);
-
-
-    if (FAILED(result))
-    {
-        std::cout
-            << "Putting File failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        inputObject->Release();
-
-        inputDefinition->Release();
-
-        outputDefinition->Release();
-
-        bcdStoreClass->Release();
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Open system BCD store
-    //
-    // IMPORTANT:
-    // IWbemServices::ExecMethod expects BSTR
-    // for object path and method name.
-    // --------------------------------------------------------
-
-    IWbemClassObject* openStoreOutput =
-        nullptr;
-
-
-    BSTR bcdStoreClassName =
-        SysAllocString(
-            L"BcdStore"
-        );
-
-
-    BSTR openStoreMethod =
-        SysAllocString(
-            L"OpenStore"
-        );
-
-
-    if (bcdStoreClassName == nullptr ||
-        openStoreMethod == nullptr)
-    {
-        std::cout
-            << "Failed to allocate BSTR for OpenStore."
-            << std::endl;
-
-
-        if (bcdStoreClassName != nullptr)
-        {
-            SysFreeString(
-                bcdStoreClassName
-            );
-        }
-
-
-        if (openStoreMethod != nullptr)
-        {
-            SysFreeString(
-                openStoreMethod
-            );
-        }
-
-
-        inputObject->Release();
-
-        inputDefinition->Release();
-
-        outputDefinition->Release();
-
-        bcdStoreClass->Release();
-
-        return false;
-    }
-
-
-    result =
         services->ExecMethod(
-            bcdStoreClassName,
-            openStoreMethod,
-            0,
-            nullptr,
-            inputObject,
-            &openStoreOutput,
-            nullptr
-        );
-
-
-    SysFreeString(
-        bcdStoreClassName
-    );
-
-
-    SysFreeString(
-        openStoreMethod
-    );
-
-
-    inputObject->Release();
-
-    inputDefinition->Release();
-
-    outputDefinition->Release();
-
-    bcdStoreClass->Release();
-
-
-    if (FAILED(result) ||
-        openStoreOutput == nullptr)
-    {
-        std::cout
-            << "OpenStore failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Get Store object
-    // --------------------------------------------------------
-
-    VARIANT store;
-
-    VariantInit(&store);
-
-
-    result =
-        openStoreOutput->Get(
-            L"Store",
-            0,
-            &store,
-            nullptr,
-            nullptr
-        );
-
-
-    openStoreOutput->Release();
-
-
-    if (FAILED(result))
-    {
-        std::cout
-            << "Reading Store output failed: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        VariantClear(&store);
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Get IWbemClassObject from returned Store
-    // --------------------------------------------------------
-
-    IWbemClassObject* bcdStoreObject =
-        nullptr;
-
-
-    if (store.vt == VT_UNKNOWN &&
-        store.punkVal != nullptr)
-    {
-        result =
-            store.punkVal->QueryInterface(
-                IID_IWbemClassObject,
-                reinterpret_cast<void**>(
-                    &bcdStoreObject
-                )
-            );
-    }
-    else
-    {
-        result = E_FAIL;
-    }
-
-
-    VariantClear(&store);
-
-
-    if (FAILED(result) ||
-        bcdStoreObject == nullptr)
-    {
-        std::cout
-            << "Could not get BcdStore object. HRESULT: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        return false;
-    }
-
-
-    // --------------------------------------------------------
-    // Get object's WMI path
-    // --------------------------------------------------------
-
-    VARIANT objectPath;
-
-    VariantInit(&objectPath);
-
-
-    result =
-        bcdStoreObject->Get(
-            L"__PATH",
-            0,
-            &objectPath,
-            nullptr,
-            nullptr
-        );
-
-
-    if (FAILED(result) ||
-        objectPath.vt != VT_BSTR ||
-        objectPath.bstrVal == nullptr)
-    {
-        std::cout
-            << "Could not get BcdStore __PATH. HRESULT: 0x"
-            << std::hex
-            << result
-            << std::dec
-            << std::endl;
-
-        VariantClear(&objectPath);
-
-        bcdStoreObject->Release();
-
-        return false;
-    }
-
-
-    std::wstring bcdStorePath =
-        objectPath.bstrVal;
-
-
-    VariantClear(&objectPath);
-
-
-    bcdStoreObject->Release();
-
-
-    // --------------------------------------------------------
-    // Call GetSystemPartition()
-    //
-    // IMPORTANT:
-    // ExecMethod expects BSTR here too.
-    // --------------------------------------------------------
-
-    IWbemClassObject* partitionOutput =
-        nullptr;
-
-
-    BSTR objectPathBstr =
-        SysAllocString(
-            bcdStorePath.c_str()
-        );
-
-
-    BSTR methodNameBstr =
-        SysAllocString(
-            L"GetSystemPartition"
-        );
-
-
-    if (objectPathBstr == nullptr ||
-        methodNameBstr == nullptr)
-    {
-        std::cout
-            << "Failed to allocate BSTR for "
-               "GetSystemPartition."
-            << std::endl;
-
-
-        if (objectPathBstr != nullptr)
-        {
-            SysFreeString(
-                objectPathBstr
-            );
-        }
-
-
-        if (methodNameBstr != nullptr)
-        {
-            SysFreeString(
-                methodNameBstr
-            );
-        }
-
-
-        return false;
-    }
-
-
-    result =
-        services->ExecMethod(
-            objectPathBstr,
-            methodNameBstr,
+            objectPath,
+            methodName,
             0,
             nullptr,
             nullptr,
-            &partitionOutput,
-            nullptr
-        );
-
+            &output,
+            nullptr);
 
     SysFreeString(
-        objectPathBstr
-    );
-
+        objectPath);
 
     SysFreeString(
-        methodNameBstr
-    );
-
+        methodName);
 
     if (FAILED(result) ||
-        partitionOutput == nullptr)
+        output == nullptr)
     {
         std::cout
-            << "GetSystemPartition failed: 0x"
+            << "GetSystemPartition failed. HRESULT: 0x"
             << std::hex
             << result
             << std::dec
@@ -1217,99 +446,102 @@ bool getSystemPartitionFromBcd(
 
 
     // --------------------------------------------------------
-    // Read Partition
+    // Read the Partition output
     // --------------------------------------------------------
 
     VARIANT partition;
 
-    VariantInit(&partition);
-
+    VariantInit(
+        &partition);
 
     result =
-        partitionOutput->Get(
+        output->Get(
             L"Partition",
             0,
             &partition,
             nullptr,
-            nullptr
-        );
+            nullptr);
 
-
-    partitionOutput->Release();
-
+    output->Release();
 
     if (FAILED(result) ||
         partition.vt != VT_BSTR ||
         partition.bstrVal == nullptr)
     {
         std::cout
-            << "Reading Partition output failed: 0x"
+            << "Could not read BCD system partition. HRESULT: 0x"
             << std::hex
             << result
             << std::dec
             << std::endl;
 
-        VariantClear(&partition);
+        VariantClear(
+            &partition);
 
         return false;
     }
 
-
     partitionPath =
         partition.bstrVal;
 
+    VariantClear(
+        &partition);
 
-    VariantClear(&partition);
-
+    std::wcout
+        << L"BCD System Partition: "
+        << partitionPath
+        << std::endl;
 
     return true;
 }
 
 
-// ============================================================
-// Map BCD device path to physical disk
+// ------------------------------------------------------------
+// Find physical disk belonging to a BCD device path
 //
 // Example:
 //
+// BCD path:
 // \Device\HarddiskVolume2
 //
-// We enumerate volumes and compare their device names.
-// ============================================================
+// We enumerate Windows volumes and compare the
+// DOS device name returned by QueryDosDeviceW().
+// ------------------------------------------------------------
 
 bool getPhysicalDiskFromBcdPath(
-    const std::wstring& bcdPath,
+    std::wstring bcdPath,
     DWORD& diskNumber,
     DWORD& partitionNumber,
     std::wstring& volumePath)
 {
     HANDLE searchHandle =
-        INVALID_HANDLE_VALUE;
+        FindFirstVolumeW(
+            nullptr,
+            0);
+
+    // The above call is only used to initialize the
+    // variable safely. The real enumeration starts below.
+    if (searchHandle != INVALID_HANDLE_VALUE)
+    {
+        FindVolumeClose(
+            searchHandle);
+    }
 
 
     wchar_t volumeName[MAX_PATH] = {};
 
-
     searchHandle =
         FindFirstVolumeW(
             volumeName,
-            MAX_PATH
-        );
-
+            MAX_PATH);
 
     if (searchHandle ==
         INVALID_HANDLE_VALUE)
     {
-        std::cout
-            << "FindFirstVolumeW failed. Error: "
-            << GetLastError()
-            << std::endl;
-
         return false;
     }
 
-
     bool found = false;
-
 
     do
     {
@@ -1318,33 +550,37 @@ bool getPhysicalDiskFromBcdPath(
                 volumeName,
                 0,
                 FILE_SHARE_READ |
-                FILE_SHARE_WRITE,
+                    FILE_SHARE_WRITE,
                 nullptr,
                 OPEN_EXISTING,
                 0,
-                nullptr
-            );
-
+                nullptr);
 
         if (volumeHandle !=
             INVALID_HANDLE_VALUE)
         {
-            wchar_t deviceName[512] = {};
+            /*
+             * FindFirstVolumeW gives:
+             *
+             * \\?\Volume{GUID}\
+             *
+             * QueryDosDeviceW expects:
+             *
+             * Volume{GUID}
+             */
 
+            wchar_t deviceName[512] = {};
 
             DWORD length =
                 QueryDosDeviceW(
                     volumeName + 4,
                     deviceName,
-                    512
-                );
-
+                    512);
 
             if (length > 0)
             {
                 std::wstring currentDevice =
                     deviceName;
-
 
                 if (_wcsicmp(
                         currentDevice.c_str(),
@@ -1353,7 +589,6 @@ bool getPhysicalDiskFromBcdPath(
                     STORAGE_DEVICE_NUMBER deviceNumber = {};
 
                     DWORD bytesReturned = 0;
-
 
                     BOOL result =
                         DeviceIoControl(
@@ -1364,64 +599,41 @@ bool getPhysicalDiskFromBcdPath(
                             &deviceNumber,
                             sizeof(deviceNumber),
                             &bytesReturned,
-                            nullptr
-                        );
-
+                            nullptr);
 
                     if (result)
                     {
                         diskNumber =
                             deviceNumber.DeviceNumber;
 
-
                         partitionNumber =
                             deviceNumber.PartitionNumber;
-
 
                         volumePath =
                             volumeName;
 
-
                         found = true;
-                    }
-                    else
-                    {
-                        std::cout
-                            << "DeviceIoControl failed while "
-                               "mapping BCD volume. Error: "
-                            << GetLastError()
-                            << std::endl;
                     }
                 }
             }
 
-
             CloseHandle(
-                volumeHandle
-            );
+                volumeHandle);
         }
-
 
         if (found)
         {
             break;
         }
 
-
-    }
-    while (
+    } while (
         FindNextVolumeW(
             searchHandle,
             volumeName,
-            MAX_PATH
-        )
-    );
-
+            MAX_PATH));
 
     FindVolumeClose(
-        searchHandle
-    );
-
+        searchHandle);
 
     return found;
 }
@@ -1433,48 +645,23 @@ bool getPhysicalDiskFromBcdPath(
 
 BootInfo WindowsBootChecker::checkBootInfo()
 {
-    std::cout
-        << std::endl
-        << "========================================"
-        << std::endl;
-
-
-    std::cout
-        << "WindowsBootChecker started"
-        << std::endl;
-
-
-    std::cout
-        << "========================================"
-        << std::endl;
-
-
-    // ========================================================
-    // STEP 1
-    // Detect UEFI / BIOS
-    // ========================================================
+    // --------------------------------------------------------
+    // 1. Detect UEFI / BIOS
+    // --------------------------------------------------------
 
     FIRMWARE_TYPE firmwareType;
-
 
     if (!GetFirmwareType(
             &firmwareType))
     {
-        std::cout
-            << "GetFirmwareType failed. Error: "
-            << GetLastError()
-            << std::endl;
-
         return BootInfo(
             "",
             "",
             "",
             "",
             false,
-            false
-        );
+            false);
     }
-
 
     bool isUefi =
         firmwareType ==
@@ -1483,152 +670,109 @@ BootInfo WindowsBootChecker::checkBootInfo()
 
     std::cout
         << "UEFI: "
-        << isUefi
+        << (isUefi ? 1 : 0)
         << std::endl;
 
 
-    // ========================================================
-    // STEP 2
-    // Find Windows directory
-    // ========================================================
+    // --------------------------------------------------------
+    // 2. Find Windows directory
+    // --------------------------------------------------------
 
     std::wstring windowsDirectory;
-
 
     if (!getWindowsDirectory(
             windowsDirectory))
     {
-        std::cout
-            << "getWindowsDirectory failed."
-            << std::endl;
-
         return BootInfo(
             "",
             "",
             "",
             "",
             isUefi,
-            false
-        );
+            false);
     }
 
-
-    std::cout
-        << "Windows Directory: "
-        << wideToString(
-            windowsDirectory
-        )
+    std::wcout
+        << L"Windows Directory: "
+        << windowsDirectory
         << std::endl;
 
 
-    // ========================================================
-    // STEP 3
-    // Find Windows drive
-    // ========================================================
+    // --------------------------------------------------------
+    // 3. Find Windows drive
+    // --------------------------------------------------------
 
     std::wstring windowsDrive;
-
 
     if (!getWindowsDrive(
             windowsDirectory,
             windowsDrive))
     {
-        std::cout
-            << "getWindowsDrive failed."
-            << std::endl;
-
         return BootInfo(
             "",
             "",
             "",
             "",
             isUefi,
-            false
-        );
+            false);
     }
 
-
-    std::cout
-        << "Windows Drive: "
-        << wideToString(
-            windowsDrive
-        )
+    std::wcout
+        << L"Windows Drive: "
+        << windowsDrive
         << std::endl;
 
 
-    // ========================================================
-    // STEP 4
-    // Get Windows volume GUID
-    // ========================================================
+    // --------------------------------------------------------
+    // 4. Find Windows volume GUID
+    // --------------------------------------------------------
 
     std::wstring systemVolumeGuid;
-
 
     if (!getVolumeGuid(
             windowsDrive,
             systemVolumeGuid))
     {
-        std::cout
-            << "getVolumeGuid failed."
-            << std::endl;
-
         return BootInfo(
             "",
             "",
             "",
             "",
             isUefi,
-            false
-        );
+            false);
     }
 
-
-    std::cout
-        << "Windows Volume: "
-        << wideToString(
-            systemVolumeGuid
-        )
+    std::wcout
+        << L"Windows Volume: "
+        << systemVolumeGuid
         << std::endl;
 
 
-    // ========================================================
-    // STEP 5
-    // Map Windows drive to physical disk
-    // ========================================================
+    // --------------------------------------------------------
+    // 5. Find Windows physical disk
+    // --------------------------------------------------------
 
-    DWORD systemDiskNumber =
-        0;
-
-
-    DWORD systemPartitionNumber =
-        0;
-
+    DWORD systemDiskNumber = 0;
+    DWORD systemPartitionNumber = 0;
 
     if (!getPhysicalDisk(
             windowsDrive,
             systemDiskNumber,
             systemPartitionNumber))
     {
-        std::cout
-            << "getPhysicalDisk failed."
-            << std::endl;
-
         return BootInfo(
             "",
             "",
             "",
             "",
             isUefi,
-            false
-        );
+            false);
     }
-
 
     std::cout
         << "Windows Physical Disk: PhysicalDrive"
         << systemDiskNumber
         << std::endl;
-
 
     std::cout
         << "Windows Partition Number: "
@@ -1636,63 +780,54 @@ BootInfo WindowsBootChecker::checkBootInfo()
         << std::endl;
 
 
-    // ========================================================
-    // STEP 6
-    // Initialize WMI
-    // ========================================================
+    // --------------------------------------------------------
+    // 6. Initialize WMI
+    // --------------------------------------------------------
 
-    IWbemLocator* locator =
-        nullptr;
-
-
-    IWbemServices* services =
-        nullptr;
-
+    IWbemLocator* locator = nullptr;
+    IWbemServices* services = nullptr;
 
     if (!initializeWmi(
             locator,
             services))
     {
-        std::cout
-            << "initializeWmi failed."
-            << std::endl;
-
         return BootInfo(
             "",
             "",
             "",
             "",
             isUefi,
-            false
-        );
+            false);
     }
 
+    std::cout
+        << "WMI initialized successfully."
+        << std::endl;
 
-    // ========================================================
-    // STEP 7
-    // Get system partition from BCD
-    // ========================================================
+
+    // --------------------------------------------------------
+    // 7. Get actual boot/system partition from BCD
+    // --------------------------------------------------------
 
     std::wstring bootPartitionDevice;
-
 
     bool bootPartitionFound =
         getSystemPartitionFromBcd(
             services,
-            bootPartitionDevice
-        );
+            bootPartitionDevice);
 
 
-    // ========================================================
-    // WMI cleanup
-    // ========================================================
+    // WMI is no longer needed.
 
     services->Release();
-
     locator->Release();
 
     CoUninitialize();
 
+
+    // --------------------------------------------------------
+    // 8. BCD failed
+    // --------------------------------------------------------
 
     if (!bootPartitionFound)
     {
@@ -1706,34 +841,18 @@ BootInfo WindowsBootChecker::checkBootInfo()
             "",
             "",
             isUefi,
-            false
-        );
+            false);
     }
 
 
-    std::cout
-        << "BCD Boot Partition Device: "
-        << wideToString(
-            bootPartitionDevice
-        )
-        << std::endl;
+    // --------------------------------------------------------
+    // 9. Map BCD boot partition to physical disk
+    // --------------------------------------------------------
 
-
-    // ========================================================
-    // STEP 8
-    // Map boot partition to physical disk
-    // ========================================================
-
-    DWORD bootDiskNumber =
-        0;
-
-
-    DWORD bootPartitionNumber =
-        0;
-
+    DWORD bootDiskNumber = 0;
+    DWORD bootPartitionNumber = 0;
 
     std::wstring bootVolumePath;
-
 
     if (!getPhysicalDiskFromBcdPath(
             bootPartitionDevice,
@@ -1741,8 +860,9 @@ BootInfo WindowsBootChecker::checkBootInfo()
             bootPartitionNumber,
             bootVolumePath))
     {
-        std::cout
-            << "Could not map boot partition to physical disk."
+        std::wcout
+            << L"Could not map BCD partition: "
+            << bootPartitionDevice
             << std::endl;
 
         return BootInfo(
@@ -1751,16 +871,13 @@ BootInfo WindowsBootChecker::checkBootInfo()
             "",
             "",
             isUefi,
-            false
-        );
+            false);
     }
-
 
     std::cout
         << "Boot Physical Disk: PhysicalDrive"
         << bootDiskNumber
         << std::endl;
-
 
     std::cout
         << "Boot Partition Number: "
@@ -1768,69 +885,41 @@ BootInfo WindowsBootChecker::checkBootInfo()
         << std::endl;
 
 
-    std::cout
-        << "Boot Volume: "
-        << wideToString(
-            bootVolumePath
-        )
-        << std::endl;
-
-
-    // ========================================================
-    // STEP 9
-    // Create disk IDs
-    // ========================================================
+    // --------------------------------------------------------
+    // 10. Create physical disk IDs
+    // --------------------------------------------------------
 
     std::string bootDiskId =
         "\\\\.\\PhysicalDrive" +
         std::to_string(
-            bootDiskNumber
-        );
-
+            bootDiskNumber);
 
     std::string systemDiskId =
         "\\\\.\\PhysicalDrive" +
         std::to_string(
-            systemDiskNumber
-        );
+            systemDiskNumber);
 
 
-    // ========================================================
-    // STEP 10
-    // Create partition paths
-    // ========================================================
+    // --------------------------------------------------------
+    // 11. Create partition paths
+    // --------------------------------------------------------
 
     std::string bootPartitionPath =
         wideToString(
-            bootVolumePath
-        );
-
+            bootVolumePath);
 
     std::string systemPartitionPath =
         wideToString(
-            systemVolumeGuid
-        );
+            systemVolumeGuid);
 
 
-    // ========================================================
-    // STEP 11
-    // Success
-    // ========================================================
+    // --------------------------------------------------------
+    // 12. Final result
+    // --------------------------------------------------------
 
     std::cout
-        << "========================================"
+        << "Windows boot information detected successfully."
         << std::endl;
-
-
-    std::cout
-        << "WindowsBootChecker SUCCESS"
-        << std::endl;
-
-
-    std::cout
-        << "========================================"
-        << std::endl;
-
 
     return BootInfo(
         bootDiskId,
@@ -1838,6 +927,5 @@ BootInfo WindowsBootChecker::checkBootInfo()
         bootPartitionPath,
         systemPartitionPath,
         isUefi,
-        true
-    );
+        true);
 }

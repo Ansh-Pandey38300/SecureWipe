@@ -15,6 +15,9 @@
 #include <QRegularExpression>
 #include <QTableView>
 #include <QVBoxLayout>
+#include <QComboBox>
+#include <QLabel>
+
 #include "styles/AppTheme.h"
 #include <QLayout>
 
@@ -31,16 +34,17 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     /*
- * The .ui file contains old dark-theme styles.
- * Remove those styles so AppTheme can control
- * the complete application appearance.
- */
+     * The .ui file contains old dark-theme styles.
+     * Remove those styles so AppTheme can control
+     * the complete application appearance.
+     */
     connect(
         ui->logoutButton,
         &QPushButton::clicked,
         this,
         &MainWindow::logout
-        );
+    );
+
     const QList<QWidget *> widgets =
         findChildren<QWidget *>();
 
@@ -52,6 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
     AppTheme::apply(this);
 
     setupDevicesPage();
+
 
     /*
      * ---------------------------------------------------------
@@ -65,10 +70,17 @@ MainWindow::MainWindow(QWidget *parent)
         this,
         [this]()
         {
-            ui->stackedWidget->setCurrentWidget(ui->appPage);
-            ui->contentStack->setCurrentWidget(ui->dashboardPage);
+            ui->stackedWidget->setCurrentWidget(
+                ui->appPage
+            );
 
-            setActiveNavButton(ui->dashboardNavButton);
+            ui->contentStack->setCurrentWidget(
+                ui->dashboardPage
+            );
+
+            setActiveNavButton(
+                ui->dashboardNavButton
+            );
 
             /*
              * Discover physical storage devices after
@@ -78,15 +90,19 @@ MainWindow::MainWindow(QWidget *parent)
         }
     );
 
+
     connect(
         authManager,
         &AuthManager::loginFailed,
         this,
         [this](const QString &message)
         {
-            ui->loginErrorLabel->setText(message);
+            ui->loginErrorLabel->setText(
+                message
+            );
         }
     );
+
 
     connect(
         ui->loginButton,
@@ -133,7 +149,10 @@ MainWindow::MainWindow(QWidget *parent)
                 return;
             }
 
-            authManager->login(email, password);
+            authManager->login(
+                email,
+                password
+            );
         }
     );
 
@@ -249,6 +268,37 @@ MainWindow::MainWindow(QWidget *parent)
             deviceTableModel->setDevices(
                 deviceController->devices()
             );
+
+
+            /*
+             * Keep the Wipe page device selector
+             * synchronized with the latest discovery.
+             */
+            ui->deviceComboBox->clear();
+
+            for (const StorageDevice& device :
+                 deviceController->devices())
+            {
+                QString label =
+                    QString::fromStdString(
+                        device.getModel()
+                    );
+
+                label +=
+                    QStringLiteral(" (");
+
+                label +=
+                    QString::fromStdString(
+                        device.getDeviceId()
+                    );
+
+                label +=
+                    QStringLiteral(")");
+
+                ui->deviceComboBox->addItem(
+                    label
+                );
+            }
         }
     );
 
@@ -266,8 +316,122 @@ MainWindow::MainWindow(QWidget *parent)
             );
         }
     );
+
+
+    /*
+     * ---------------------------------------------------------
+     * Wipe Target Selection
+     * ---------------------------------------------------------
+     *
+     * When the user selects a device from the Wipe page,
+     * DeviceController saves that device as the expected target.
+     */
+    connect(
+        ui->deviceComboBox,
+        QOverload<int>::of(
+            &QComboBox::currentIndexChanged
+        ),
+        this,
+        [this](int index)
+        {
+            if (index < 0)
+            {
+                return;
+            }
+
+            if (!deviceController->selectTarget(index))
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Unable to select target device."
+                    )
+                );
+
+                return;
+            }
+
+            ui->statusLabel->setText(
+                QStringLiteral(
+                    "Target device selected."
+                )
+            );
+        }
+    );
+
+
+    /*
+     * ---------------------------------------------------------
+     * Start Sanitization
+     * ---------------------------------------------------------
+     *
+     * The target is freshly discovered and validated first.
+     * Only after successful validation does SafetyEngine run.
+     */
+    connect(
+        ui->startWipeButton,
+        &QPushButton::clicked,
+        this,
+        [this]()
+        {
+            /*
+             * Step 1:
+             *
+             * Freshly discover the storage devices and
+             * verify that the device originally selected
+             * by the user still exists with the same identity.
+             */
+            if (!deviceController->validateSelectedTarget())
+            {
+                return;
+            }
+
+
+            /*
+             * Step 2:
+             *
+             * Run the SafetyEngine only after target
+             * validation has succeeded.
+             */
+            if (!deviceController->evaluateSelectedTarget())
+            {
+                return;
+            }
+
+
+            /*
+             * Step 3:
+             *
+             * All currently enabled safety checks passed.
+             *
+             * The actual sanitization engine should be
+             * called from this point later.
+             */
+            ui->statusLabel->setText(
+                QStringLiteral(
+                    "Safety checks passed. Ready for sanitization."
+                )
+            );
+
+            QMessageBox::information(
+                this,
+                QStringLiteral("Safety Check"),
+                QStringLiteral(
+                    "All safety checks passed.\n\n"
+                    "The target device is ready for sanitization."
+                )
+            );
+
+            // Actual sanitization call will be added here.
+        }
+    );
 }
 
+
+/*
+ * =============================================================
+ * Destructor
+ * =============================================================
+ */
 
 MainWindow::~MainWindow()
 {
@@ -308,7 +472,9 @@ void MainWindow::setupDevicesPage()
             ui->devicesPage
         );
 
-        ui->devicesPage->setLayout(layout);
+        ui->devicesPage->setLayout(
+            layout
+        );
     }
 
 
@@ -359,9 +525,13 @@ void MainWindow::setupDevicesPage()
             ui->devicesPage
         );
 
-    refreshDevicesButton->setMinimumHeight(38);
+    refreshDevicesButton->setMinimumHeight(
+        38
+    );
 
-    refreshDevicesButton->setMinimumWidth(150);
+    refreshDevicesButton->setMinimumWidth(
+        150
+    );
 
     refreshDevicesButton->setCursor(
         Qt::PointingHandCursor
@@ -617,8 +787,11 @@ void MainWindow::showSelectedDeviceDetails()
         return;
     }
 
-    showDeviceDetails(*device);
+    showDeviceDetails(
+        *device
+    );
 }
+
 
 void MainWindow::showDeviceDetails(
     const StorageDevice &device)
@@ -687,10 +860,6 @@ void MainWindow::showDeviceDetails(
 
     /*
      * Refresh → rediscover devices.
-     *
-     * For now this simply returns to the Devices list
-     * and refreshes discovery. Later we can refresh the
-     * details page directly.
      */
     connect(
         deviceDetailsPage,
@@ -788,16 +957,18 @@ void MainWindow::setActiveNavButton(
             button == activeButton
                 ? activeStyle
                 : inactiveStyle
-            );
+        );
     }
 }
+
 
 void MainWindow::logout()
 {
     ui->passwordLineEdit->clear();
+
     ui->loginErrorLabel->clear();
 
     ui->stackedWidget->setCurrentWidget(
         ui->loginPage
-        );
+    );
 }
