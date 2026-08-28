@@ -1,5 +1,10 @@
 const asyncHandler = require("../utils/asyncHandler");
-const { createWorkstationCenter, getWorkstationCenterById, assignEmployees } = require("../services/workstationCenter.services");
+const { createWorkstationCenter,
+    getWorkstationCenterById,
+    assignEmployees,
+    getActiveWorkstationCenters,
+    getMyWorkstationCenter 
+    } = require("../services/workstationCenter.services");
 
 module.exports.createWorkStationCenter = asyncHandler(async (req, res, next) => {
     const workstationCenter = await createWorkstationCenter(req.body);
@@ -36,3 +41,41 @@ module.exports.assignEmployees = asyncHandler(async (req, res, next) => {
 
 
 })
+
+module.exports.getActiveWorkstationCenters =
+    asyncHandler(
+        async (req, res) => {
+
+            const centers =
+                await getActiveWorkstationCenters();
+
+            res.status(200).json({
+                success: true,
+
+                message:
+                    "Active workstation centers fetched successfully",
+
+                data: centers
+            });
+        }
+    );
+
+    module.exports.getMyWorkstationCenter =
+    asyncHandler(
+        async (req, res) => {
+
+            const center =
+                await getMyWorkstationCenter(
+                    req.user
+                );
+
+            res.status(200).json({
+                success: true,
+
+                message:
+                    "Workstation center fetched successfully",
+
+                data: center
+            });
+        }
+    );

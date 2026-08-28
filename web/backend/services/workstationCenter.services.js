@@ -276,8 +276,123 @@ const assignEmployees = async (
     return center;
 };
 
+const getActiveWorkstationCenters =
+    async () => {
+
+        const centers =
+            await WorkstationCenter.find({
+                status: "ACTIVE"
+            })
+            .select(
+                "centerId name location status"
+            )
+            .sort({
+                name: 1
+            });
+
+        return centers;
+    };
+
+const getMyWorkstationCenter = async (user) => {
+
+    // ---------------------------------------------
+    // 1. Authentication check
+    // ---------------------------------------------
+
+    if (!user) {
+        throw new AppError(
+            "Authentication required",
+            401
+        );
+    }
+
+
+    // ---------------------------------------------
+    // 2. Role check
+    // ---------------------------------------------
+
+    if (user.role !== "WORKSTATION_HEAD") {
+        throw new AppError(
+            "Only workstation heads can access this resource",
+            403
+        );
+    }
+
+
+    // ---------------------------------------------
+    // 3. Find center belonging to logged-in head
+    // ---------------------------------------------
+
+    const center =
+        await WorkstationCenter.findOne({
+            head: user._id
+        })
+        .populate(
+            "head",
+            "name email"
+        )
+        .populate(
+            "employees",
+            "name email role status workstationCenter"
+        );
+
+
+    // ---------------------------------------------
+    // 4. Center must exist
+    // ---------------------------------------------
+
+    if (!center) {
+        throw new AppError(
+            "No workstation center is assigned to this head",
+            404
+        );
+    }
+
+
+    // ---------------------------------------------
+    // 5. Get workstations belonging to this center
+    // ---------------------------------------------
+
+    const workstations =
+        await Workstation.find({
+            workstationCenter: center._id
+        })
+        .populate(
+            "assignedEmployee",
+            "name email role status"
+        )
+        .select(
+            "workstationId name status connectionStatus hostname operatingSystem assignedEmployee enrolledAt"
+        )
+        .sort({
+            name: 1
+        });
+
+
+    // ---------------------------------------------
+    // 6. Return center information
+    // ---------------------------------------------
+
+    return {
+        centerId: center.centerId,
+
+        name: center.name,
+
+        location: center.location,
+
+        status: center.status,
+
+        head: center.head,
+
+        employees: center.employees,
+
+        workstations: workstations
+    };
+};
 module.exports = {
     createWorkstationCenter,
     getWorkstationCenterById,
-    assignEmployees
+    assignEmployees,
+    getActiveWorkstationCenters,
+    getMyWorkstationCenter
 };

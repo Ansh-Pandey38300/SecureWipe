@@ -19,3 +19,38 @@ export const assignEmployeesToCenter = async (centerId, employeesIds) => {
         body: JSON.stringify({ employeesIds }),
     });
 };
+
+export const getActiveWorkstationCenters = async () => {
+    return apiRequest("/api/workstation-centers", {
+        method: "GET",
+    });
+};
+
+export const getHeadSanitizationRequests = async () => {
+    const response = await apiRequest.get("/sanitization-requests/head");
+
+    return response.data;
+};
+
+export const updateSanitizationRequestStatus = async (
+    requestId,
+    data
+) => {
+    const response = await apiRequest.patch(
+        `/sanitization-requests/${requestId}/status`,
+        data
+    );
+
+    return response.data;
+};
+
+export const getMyWorkstationCenter =
+    async () => {
+
+        return apiRequest(
+            "/api/workstation-centers/my",
+            {
+                method: "GET",
+            }
+        );
+    };

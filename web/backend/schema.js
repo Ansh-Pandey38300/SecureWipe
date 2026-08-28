@@ -252,6 +252,13 @@ const sanitizationRequestSchema =
         consent: Joi.boolean()
             .valid(true)
             .required(),
+            
+        workstationCenter: Joi.string()
+            .required()
+            .messages({
+            "any.required": "Workstation center is required",
+            "string.empty": "Workstation center is required"
+        }),
     });
 
 module.exports = {
