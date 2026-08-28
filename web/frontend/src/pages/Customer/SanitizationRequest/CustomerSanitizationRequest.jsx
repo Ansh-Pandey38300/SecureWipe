@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { apiRequest } from "../../../services/api";
+import { getActiveWorkstationCenters, } from "../../../services/workstationCenterService";
+
 
 import {
     DEVICE_TYPES,
@@ -12,6 +14,7 @@ const INITIAL_FORM_DATA = {
     name: "",
     email: "",
     phone: "",
+    workstationCenter: "",
     deviceType: "",
     capacity: "",
     deviceCount: 1,
@@ -86,8 +89,8 @@ function InputField({
                     error ? errorId : undefined
                 }
                 className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${error
-                        ? "border-red-500 focus:ring-red-200"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
                     }`}
             />
 
@@ -141,8 +144,8 @@ function SelectField({
                     error ? errorId : undefined
                 }
                 className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${error
-                        ? "border-red-500 focus:ring-red-200"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
                     }`}
             >
                 <option value="">
@@ -202,8 +205,8 @@ function TextAreaField({
                 }
                 rows={4}
                 className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${error
-                        ? "border-red-500 focus:ring-red-200"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
                     }`}
             />
 
@@ -216,21 +219,50 @@ function TextAreaField({
 }
 
 export default function CustomerSanitizationRequest() {
-    const [formData, setFormData] =
-        useState(INITIAL_FORM_DATA);
+    const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+
+    const [workstationCenters, setWorkstationCenters,] = useState([]);
+    const [isLoadingCenters, setIsLoadingCenters,] = useState(true);
+    const [centerLoadError, setCenterLoadError,] = useState("");
 
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
-    const [isSubmitting, setIsSubmitting] =
-        useState(false);
 
-    const [submitError, setSubmitError] =
-        useState("");
-
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
     const [success, setSuccess] = useState(null);
 
-    const today =
-        new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
+
+    useEffect(() => {
+        const loadWorkstationCenters = async () => {
+            setIsLoadingCenters(true);
+            setCenterLoadError("");
+
+            try {
+                const response =
+                    await getActiveWorkstationCenters();
+
+                setWorkstationCenters(
+                    response?.data || []
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to load workstation centers:",
+                    error
+                );
+
+                setCenterLoadError(
+                    error?.message ||
+                    "Unable to load workstation centers."
+                );
+            } finally {
+                setIsLoadingCenters(false);
+            }
+        };
+
+        loadWorkstationCenters();
+    }, []);
 
     const summary = useMemo(
         () => ({
@@ -382,16 +414,13 @@ export default function CustomerSanitizationRequest() {
 
                             phone: formData.phone,
 
-                            deviceType:
-                                formData.deviceType,
+                            workstationCenter:formData.workstationCenter,
 
-                            capacity:
-                                formData.capacity,
+                            deviceType:formData.deviceType,
 
-                            deviceCount:
-                                Number(
-                                    formData.deviceCount
-                                ),
+                            capacity:formData.capacity,
+
+                            deviceCount:Number(formData.deviceCount),
 
                             assetIdentifier:
                                 formData.assetIdentifier,
@@ -527,6 +556,77 @@ export default function CustomerSanitizationRequest() {
                                 placeholder="+91 9876543210"
                                 required
                             />
+                            <div>
+                                <label
+                                    htmlFor="workstationCenter"
+                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                >
+                                    Workstation Center
+
+                                    <span
+                                        className="ml-1 text-red-600"
+                                        aria-hidden="true"
+                                    >
+                                        *
+                                    </span>
+                                </label>
+
+                                <select
+                                    id="workstationCenter"
+                                    name="workstationCenter"
+                                    value={formData.workstationCenter}
+                                    onChange={handleChange}
+                                    onBlur={handleBlur}
+                                    disabled={isLoadingCenters}
+                                    required
+                                    aria-invalid={Boolean(
+                                        errors.workstationCenter
+                                    )}
+                                    aria-describedby={
+                                        errors.workstationCenter
+                                            ? "workstationCenter-error"
+                                            : undefined
+                                    }
+                                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ${errors.workstationCenter
+                                            ? "border-red-500 focus:ring-red-200"
+                                            : "border-gray-300 focus:border-blue-500 focus:ring-blue-100"
+                                        }`}
+                                >
+                                    <option value="">
+                                        {isLoadingCenters
+                                            ? "Loading workstation centers..."
+                                            : "Select workstation center"}
+                                    </option>
+
+                                    {workstationCenters.map((center) => (
+                                        <option
+                                            key={center.centerId}
+                                            value={center.centerId}
+                                        >
+                                            {center.name}
+                                            {center.location?.city
+                                                ? ` — ${center.location.city}`
+                                                : ""}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <FieldError
+                                    message={
+                                        errors.workstationCenter
+                                    }
+                                    id="workstationCenter-error"
+                                />
+
+                                {centerLoadError && (
+                                    <p
+                                        className="mt-1 text-sm text-red-600"
+                                        role="alert"
+                                    >
+                                        {centerLoadError}
+                                    </p>
+                                )}
+                            </div>
 
                         </div>
                     </section>

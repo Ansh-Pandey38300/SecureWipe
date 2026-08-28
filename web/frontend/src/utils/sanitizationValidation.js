@@ -40,6 +40,11 @@ export function validateSanitizationForm(
 ) {
     const errors = {};
 
+    if (!formData.workstationCenter) {
+    errors.workstationCenter =
+        "Please select a workstation center.";
+    }
+
     const name = formData.name.trim();
     const email = formData.email.trim();
     const phone = formData.phone.trim();

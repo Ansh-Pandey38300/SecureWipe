@@ -1,173 +1,253 @@
 const mongoose = require("mongoose");
 
-const sanitizationRequestSchema =
-    new mongoose.Schema(
-        {
-            requestId: {
-                type: String,
-                unique: true,
-                index: true,
-            },
+const sanitizationRequestSchema = new mongoose.Schema(
+    {
+        // --------------------------------------------------
+        // REQUEST IDENTIFICATION
+        // --------------------------------------------------
 
-            customer: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",
-                required: true,
-                index: true,
-            },
-
-            name: {
-                type: String,
-                required: true,
-                trim: true,
-                maxlength: 100,
-            },
-
-            email: {
-                type: String,
-                required: true,
-                trim: true,
-                lowercase: true,
-                maxlength: 254,
-            },
-
-            phone: {
-                type: String,
-                required: true,
-                trim: true,
-                maxlength: 20,
-            },
-
-            deviceType: {
-                type: String,
-                required: true,
-                enum: [
-                    "SSD",
-                    "HDD",
-                    "USB Drive",
-                    "NVMe SSD",
-                    "Other",
-                ],
-            },
-
-            capacity: {
-                type: String,
-                required: true,
-                enum: [
-                    "2 GB",
-                    "4 GB",
-                    "8 GB",
-                    "16 GB",
-                    "32 GB",
-                    "64 GB",
-                    "128 GB",
-                    "256 GB",
-                    "512 GB",
-                    "1 TB",
-                    "2 TB",
-                    "Other",
-                ],
-            },
-
-            deviceCount: {
-                type: Number,
-                required: true,
-                min: 1,
-                max: 100,
-            },
-
-            assetIdentifier: {
-                type: String,
-                trim: true,
-                maxlength: 100,
-                default: "",
-            },
-
-            sanitizationMethod: {
-                type: String,
-                required: true,
-                enum: [
-                    "Secure Erase",
-                    "Cryptographic Erase",
-                    "Overwrite",
-                    "Standard Sanitization",
-                    "To Be Determined",
-                ],
-            },
-
-            additionalRequirements: {
-                type: String,
-                trim: true,
-                maxlength: 1000,
-                default: "",
-            },
-
-            preferredDate: {
-                type: Date,
-                default: null,
-            },
-
-            notes: {
-                type: String,
-                trim: true,
-                maxlength: 2000,
-                default: "",
-            },
-
-            consent: {
-                type: Boolean,
-                required: true,
-                validate: {
-                    validator: (value) =>
-                        value === true,
-                    message:
-                        "Consent is required",
-                },
-            },
-
-            status: {
-                type: String,
-                enum: [
-                    "PENDING",
-                    "APPROVED",
-                    "REJECTED",
-                    "IN_PROGRESS",
-                    "COMPLETED",
-                    "CANCELLED",
-                ],
-                default: "PENDING",
-                index: true,
-            },
+        requestId: {
+            type: String,
+            unique: true,
+            index: true,
+            required: true
         },
-        {
-            timestamps: true,
-        }
-    );
 
-sanitizationRequestSchema.pre(
-    "validate",
-    async function () {
-        if (!this.requestId) {
-            const count =
-                await mongoose
-                    .model(
-                        "SanitizationRequest"
-                    )
-                    .countDocuments();
+        // --------------------------------------------------
+        // CUSTOMER
+        // --------------------------------------------------
 
-            this.requestId =
-                `REQ-${String(
-                    count + 1
-                ).padStart(5, "0")}`;
-        }
+        customer: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true
+        },
+
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        email: {
+            type: String,
+            required: true,
+            trim: true,
+            lowercase: true
+        },
+
+        phone: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        // --------------------------------------------------
+        // DEVICE INFORMATION
+        // --------------------------------------------------
+
+        deviceType: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        capacity: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        deviceCount: {
+            type: Number,
+            required: true,
+            min: 1
+        },
+
+        assetIdentifier: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
+        // --------------------------------------------------
+        // SANITIZATION INFORMATION
+        // --------------------------------------------------
+
+        sanitizationMethod: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        additionalRequirements: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
+        preferredDate: {
+            type: Date,
+            default: null
+        },
+
+        notes: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
+        consent: {
+            type: Boolean,
+            required: true,
+            default: false
+        },
+
+        // --------------------------------------------------
+        // WORKSTATION CENTER
+        // --------------------------------------------------
+
+        workstationCenter: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "WorkstationCenter",
+            required: true,
+            index: true
+        },
+
+        // --------------------------------------------------
+        // REQUEST STATUS
+        // --------------------------------------------------
+
+        status: {
+            type: String,
+            enum: [
+                "PENDING",
+                "APPROVED",
+                "REJECTED",
+                "ASSIGNED",
+                "IN_PROGRESS",
+                "VERIFYING",
+                "COMPLETED",
+                "FAILED",
+                "CANCELLED"
+            ],
+            default: "PENDING",
+            required: true,
+            index: true
+        },
+
+        // --------------------------------------------------
+        // REVIEW INFORMATION
+        // --------------------------------------------------
+
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null
+        },
+
+        reviewedAt: {
+            type: Date,
+            default: null
+        },
+
+        rejectionReason: {
+            type: String,
+            trim: true,
+            maxlength: 1000,
+            default: ""
+        },
+
+        // --------------------------------------------------
+        // ASSIGNMENT INFORMATION
+        // --------------------------------------------------
+
+        assignedCenter: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "WorkstationCenter",
+            default: null
+        },
+
+        assignedEmployee: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null
+        },
+
+        assignedWorkstation: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "WorkStation",
+            default: null
+        },
+
+        assignedAt: {
+            type: Date,
+            default: null
+        },
+
+        // --------------------------------------------------
+        // EXECUTION TIMESTAMPS
+        // --------------------------------------------------
+
+        startedAt: {
+            type: Date,
+            default: null
+        },
+
+        completedAt: {
+            type: Date,
+            default: null
+        },
+
+        // --------------------------------------------------
+        // REQUEST HISTORY
+        // --------------------------------------------------
+
+        history: [
+            {
+                status: {
+                    type: String,
+                    enum: [
+                        "PENDING",
+                        "APPROVED",
+                        "REJECTED",
+                        "ASSIGNED",
+                        "IN_PROGRESS",
+                        "VERIFYING",
+                        "COMPLETED",
+                        "FAILED",
+                        "CANCELLED"
+                    ],
+                    required: true
+                },
+
+                changedBy: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User",
+                    required: true
+                },
+
+                changedAt: {
+                    type: Date,
+                    default: Date.now
+                },
+
+                note: {
+                    type: String,
+                    trim: true,
+                    maxlength: 1000,
+                    default: ""
+                }
+            }
+        ]
+    },
+    {
+        timestamps: true
     }
 );
 
-const SanitizationRequest =
-    mongoose.model(
-        "SanitizationRequest",
-        sanitizationRequestSchema
-    );
-
-module.exports =
-    SanitizationRequest;
+module.exports = mongoose.model(
+    "SanitizationRequest",
+    sanitizationRequestSchema
+);
