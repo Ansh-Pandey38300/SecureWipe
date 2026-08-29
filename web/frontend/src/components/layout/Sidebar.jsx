@@ -57,20 +57,7 @@ function Sidebar() {
                         >
                             Workstation Centers
                         </NavLink>
-{/*                         
-                        <NavLink
-                            to="/admin/dashboard"
-                            className={getLinkClass}
-                        >
-                            Sanitization Requests
-                        </NavLink> */}
 
-                        {/* <NavLink
-                            to="/admin/workstations"
-                            className={getLinkClass}
-                        >
-                            Workstations
-                        </NavLink> */}
                     </>
                 )}
 
@@ -81,6 +68,14 @@ function Sidebar() {
                             className={getLinkClass}
                         >
                             Dashboard
+                        </NavLink>
+
+
+                        <NavLink
+                            to="/workstation-head/sanitization-requests"
+                            className={getLinkClass}
+                        >
+                            Sanitization Requests
                         </NavLink>
                     </>
                 )}

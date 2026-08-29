@@ -76,3 +76,14 @@ export const assignSanitizationRequest =
 
         return response.data;
     };
+
+export const getAllHeadSanitizationRequests =
+    async () => {
+
+        const response =
+            await apiRequest(
+                "/api/sanitization-requests/head/all"
+            );
+
+        return response.data || [];
+    };

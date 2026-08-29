@@ -1,6 +1,30 @@
 const Workstation = require("../models/WorkStation");
 const WorkstationCenter = require("../models/WorkstationCenter");
 const AppError = require("../utils/AppError");
+const Counter = require("../models/Counter");
+
+const generateWorkstationId = async () => {
+
+    const counter =
+        await Counter.findOneAndUpdate(
+            {
+                name: "workstation"
+            },
+            {
+                $inc: {
+                    sequence: 1
+                }
+            },
+            {
+                new: true,
+                upsert: true
+            }
+        );
+
+    return `WS-${String(
+        counter.sequence
+    ).padStart(4, "0")}`;
+};
 
 const createWorkstation = async (data) => {
 
@@ -26,7 +50,11 @@ const createWorkstation = async (data) => {
         );
     }
 
+    const workstationId = await generateWorkstationId();
+
     const workstation = await Workstation.create({
+        ...data,
+        workstationId,
         name: data.name,
         status: data.status,
         workstationCenter: center._id
