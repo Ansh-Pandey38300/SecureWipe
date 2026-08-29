@@ -177,7 +177,7 @@ const sanitizationRequestSchema = new mongoose.Schema(
 
         assignedWorkstation: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "WorkStation",
+            ref: "Workstation",
             default: null
         },
 

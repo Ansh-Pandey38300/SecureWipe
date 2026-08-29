@@ -198,7 +198,7 @@ const getHeadSanitizationRequests =
         }
 
         if (
-            user.role !=="WORKSTATION_HEAD"
+            user.role !== "WORKSTATION_HEAD"
         ) {
             throw new AppError(
                 "Only workstation heads can view center requests",
@@ -287,7 +287,9 @@ const getHeadSanitizationRequests =
         return requests;
     };
 
-    // ==================================================
+
+
+// ==================================================
 // ADMIN — APPROVE / REJECT SANITIZATION REQUEST
 // ==================================================
 
@@ -455,6 +457,68 @@ const getHeadApprovedSanitizationRequests =
                 .populate(
                     "workstationCenter",
                     "centerId name location status"
+                )
+                .sort({
+                    createdAt: -1
+                });
+
+        return requests;
+    };
+
+
+const getAllHeadSanitizationRequests =
+    async (user) => {
+
+        if (!user) {
+            throw new AppError(
+                "Authentication required",
+                401
+            );
+        }
+
+        if (
+            user.role !==
+            "WORKSTATION_HEAD"
+        ) {
+            throw new AppError(
+                "Only workstation heads can view center requests",
+                403
+            );
+        }
+
+        const center =
+            await WorkstationCenter.findOne({
+                head: user._id
+            });
+
+        if (!center) {
+            throw new AppError(
+                "Workstation head is not assigned to a workstation center",
+                400
+            );
+        }
+
+        const requests =
+            await SanitizationRequest
+                .find({
+                    workstationCenter:
+                        center._id
+                })
+                .populate(
+                    "customer",
+                    "name email"
+                )
+                .populate(
+                    "workstationCenter",
+                    "centerId name location status"
+                )
+                .populate(
+                    "assignedEmployee",
+                    "name email phone role status"
+                )
+                .populate(
+                    "assignedWorkstation",
+                    "workstationId name status connectionStatus"
                 )
                 .sort({
                     createdAt: -1
@@ -644,7 +708,7 @@ const assignSanitizationRequest =
         if (
             !employee.workstationCenter ||
             employee.workstationCenter.toString() !==
-                center._id.toString()
+            center._id.toString()
         ) {
             throw new AppError(
                 "Selected employee does not belong to your workstation center",
@@ -707,7 +771,7 @@ const assignSanitizationRequest =
         if (
             workstation.assignedEmployee &&
             workstation.assignedEmployee.toString() !==
-                employee._id.toString()
+            employee._id.toString()
         ) {
             throw new AppError(
                 "Selected workstation is already assigned to another employee",
@@ -879,4 +943,5 @@ module.exports = {
     updateSanitizationRequestStatus,
     assignSanitizationRequest,
     getMyWorkstationCenter,
+    getAllHeadSanitizationRequests,
 };

@@ -69,6 +69,13 @@ router.get(
     controller.getHeadApprovedSanitizationRequests
 );
 
+router.get(
+    "/head/all",
+    Authenticate,
+    Authorize("WORKSTATION_HEAD"),
+    controller.getAllHeadSanitizationRequests
+);
+
 router.patch(
     "/:requestId/assign",
     Authenticate,

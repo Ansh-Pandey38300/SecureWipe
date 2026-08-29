@@ -9,6 +9,7 @@ const {
     getHeadApprovedSanitizationRequests,
     updateSanitizationRequestStatus,
     assignSanitizationRequest,
+    getAllHeadSanitizationRequests,
 } = require(
     "../services/sanitizationRequest.services"
 );
@@ -186,6 +187,23 @@ module.exports.assignSanitizationRequest =
                     assignedAt:
                         request.assignedAt
                 }
+            });
+        }
+    );
+
+module.exports.getAllHeadSanitizationRequests =
+    asyncHandler(
+        async (req, res) => {
+
+            const requests =
+                await getAllHeadSanitizationRequests(
+                    req.user
+                );
+
+            res.status(200).json({
+                success: true,
+
+                data: requests,
             });
         }
     );

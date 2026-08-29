@@ -1,9 +1,4 @@
-import {
-    BrowserRouter,
-    Navigate,
-    Route,
-    Routes,
-} from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, } from "react-router-dom";
 
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
@@ -26,6 +21,8 @@ import WorkstationEmployeeDashboard from "./pages/WorkstationEmployee/Dashboard/
 import CustomerDashboard from "./pages/Customer/Dashboard/CustomerDashboard";
 
 import CustomerSanitizationRequest from "./pages/Customer/SanitizationRequest/CustomerSanitizationRequest";
+
+import WorkstationHeadSanitizationRequests from "./pages/WorkstationHead/SanitizationRequests/WorkstationHeadSanitizationRequests";
 
 
 
@@ -107,6 +104,13 @@ function App() {
                                 path="dashboard"
                                 element={
                                     <WorkstationHeadDashboard />
+                                }
+                            />
+
+                            <Route
+                                path="sanitization-requests"
+                                element={
+                                    <WorkstationHeadSanitizationRequests />
                                 }
                             />
 
