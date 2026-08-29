@@ -207,43 +207,125 @@ bool SafetyEngine::checkTargetIdentity(const StorageDevice &device)
     return true;
 }
 
+SafetyResult SafetyEngine::evaluateWithResult(const StorageDevice &device)
+{
+    SafetyResult result;
+    // Check 1:
+    if (checkSystemDisk(device))
+    {
+        result.checks.push_back({"System Disk Check",
+                                 true,
+                                 "Target is not the current Windows system disk."});
+    }
+    else
+    {
+        result.checks.push_back({"System Disk Check",
+                                 false,
+                                 "Target is the current Windows system disk."});
+        result.isOverallSafe = false;
+    }
+
+    // // Check 2:
+    if (checkBootDependency(device))
+    {
+        result.checks.push_back({"Boot Dependency Check",
+                                 true,
+                                 "Target is not currently required for the boot process."});
+    }
+    else
+    {
+        result.checks.push_back({"Boot Dependency Check",
+                                 false,
+                                 "The current Windows boot process depends on this device."});
+        result.isOverallSafe = false;
+    }
+
+    // Check 3:
+    if (checkMountedVolume(device))
+    {
+        result.checks.push_back({"Mounted Volume Check",
+                                 true,
+                                 "No mounted or actively used volume was detected on the target."});
+    }
+    else
+    {
+        result.checks.push_back({"Mounted Volume Check",
+                                 false,
+                                 "A volume on the target disk is currently mounted or in use."});
+
+        result.isOverallSafe = false;
+    }
+
+    // Check 5:
+    if (checkPhysicalDevice(device))
+    {
+        result.checks.push_back({"Physical Device Check",
+                                 true,
+                                 "Required physical device information is available."});
+    }
+    else
+    {
+        result.checks.push_back({"Physical Device Check",
+                                 false,
+                                 "Required physical device information is missing."});
+
+        result.isOverallSafe = false;
+    }
+
+    // Check 6:
+    if (checkTargetIdentity(device))
+    {
+        result.checks.push_back({"Target Identity Check",
+                                 true,
+                                 "Target matches the device originally selected by the user."});
+    }
+    else
+    {
+        result.checks.push_back({"Target Identity Check",
+                                 false,
+                                 "Target does not match the device originally selected by the user."});
+
+        result.isOverallSafe = false;
+    }
+
+    if (result.isOverallSafe)
+    {
+        result.decision = "SAFE";
+
+        result.summary =
+            "All safety checks passed. "
+            "Sanitization may proceed.";
+    }
+    else
+    {
+        result.decision = "BLOCKED";
+
+        result.summary =
+            "One or more safety checks failed. "
+            "Sanitization must not proceed.";
+    }
+
+    return result;
+};
+
 bool SafetyEngine::validateTarget(const std::vector<StorageDevice> &devices, StorageDevice &target)
 {
     if (!hasExpectedTarget_)
-        return nullptr;
+        return false;
 
     for (std::size_t i = 0; i < devices.size(); ++i)
     {
         if (checkTargetIdentity(devices[i]))
         {
-            return &devices[i];
+            return true;
         }
     }
 
-    return nullptr;
+    return false;
 }
 
 bool SafetyEngine::evaluate(const StorageDevice &device)
 {
-    // Check 1:
-    if (!checkSystemDisk(device))
-        return false;
-
-    // // Check 2:
-    // if (!checkBootDependency(device))
-    //     return false;
-
-    // Check 3:
-    if (!checkMountedVolume(device))
-        return false;
-
-    // Check 5:
-    if (!checkPhysicalDevice(device))
-        return false;
-
-    // Check 6:
-    if (!checkTargetIdentity(device))
-        return false;
-
-    return true;
+    SafetyResult result = evaluateWithResult(device);
+    return result.isOverallSafe;
 }
