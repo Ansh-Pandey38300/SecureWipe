@@ -24,6 +24,8 @@ import CustomerSanitizationRequest from "./pages/Customer/SanitizationRequest/Cu
 
 import WorkstationHeadSanitizationRequests from "./pages/WorkstationHead/SanitizationRequests/WorkstationHeadSanitizationRequests";
 
+import WorkstationHeadWorkstations from "./pages/WorkstationHead/Workstations/WorkstationHeadWorkstations";
+
 
 
 function App() {
@@ -111,6 +113,13 @@ function App() {
                                 path="sanitization-requests"
                                 element={
                                     <WorkstationHeadSanitizationRequests />
+                                }
+                            />
+
+                            <Route
+                                path="workstations"
+                                element={
+                                    <WorkstationHeadWorkstations />
                                 }
                             />
 

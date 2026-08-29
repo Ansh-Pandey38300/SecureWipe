@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 
 import {
@@ -15,25 +15,22 @@ import {
 } from "../../../services/workstationCenterService";
 
 function WorkstationHeadDashboard() {
+
     const { user } = useAuth();
 
-    const [pendingRequests, setPendingRequests] =
-        useState([]);
+    const navigate = useNavigate();
 
-    const [approvedRequests, setApprovedRequests] =
-        useState([]);
+    const [pendingRequests, setPendingRequests] = useState([]);
 
-    const [center, setCenter] =
-        useState(null);
+    const [approvedRequests, setApprovedRequests] = useState([]);
 
-    const [loading, setLoading] =
-        useState(true);
+    const [center, setCenter] = useState(null);
 
-    const [actionLoading, setActionLoading] =
-        useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const [assignment, setAssignment] =
-        useState({});
+    const [actionLoading, setActionLoading] = useState(null);
+
+    const [assignment, setAssignment] = useState({});
 
 
     const loadDashboard =
@@ -379,7 +376,14 @@ function WorkstationHeadDashboard() {
                 </div>
 
 
-                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div
+                    onClick={() =>
+                        navigate(
+                            "/workstation-head/workstations"
+                        )
+                    }
+                    className="cursor-pointer rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
+                >
 
                     <p className="text-sm text-slate-500">
                         Active Workstations
@@ -387,6 +391,10 @@ function WorkstationHeadDashboard() {
 
                     <p className="mt-2 text-3xl font-semibold text-slate-900">
                         {availableWorkstations.length}
+                    </p>
+
+                    <p className="mt-2 text-xs font-medium text-indigo-600">
+                        View all workstations →
                     </p>
 
                 </div>
