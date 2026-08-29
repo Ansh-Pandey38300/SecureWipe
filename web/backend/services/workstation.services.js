@@ -53,6 +53,7 @@ const createWorkstation = async (data) => {
     const workstationId = await generateWorkstationId();
 
     const workstation = await Workstation.create({
+        ...data,
         workstationId,
         name: data.name,
         status: data.status,
