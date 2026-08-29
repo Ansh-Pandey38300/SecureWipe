@@ -13,6 +13,8 @@ add_library(
 
     safety/src/WindowsStorageUtils.cpp
     safety/src/SafetyEngine.cpp
+
+    sanitization/src/SanitizationEngine.cpp
 )
 
 target_include_directories(
@@ -22,8 +24,7 @@ target_include_directories(
     discovery/include
     classification/include
     safety/include
-
-
+    sanitization/include
 )
 
 if(WIN32)
@@ -65,6 +66,11 @@ add_executable(
     tests/SafetyEngineTest.cpp
 )
 
+add_executable(
+    SanitizationEngineTest
+    tests/SanitizationEngineTest.cpp
+)
+
 set(STORAGE_TESTS
     StorageDeviceTest
     StorageManagerTest
@@ -72,6 +78,7 @@ set(STORAGE_TESTS
     DeviceClassifierTest
     WindowsBootCheckerTest
     SafetyEngineTest
+    SanitizationEngineTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)
@@ -83,6 +90,7 @@ target_include_directories(
         discovery/include
         classification/include
         safety/include
+        sanitization/include
 )
 
 target_link_libraries(
