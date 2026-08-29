@@ -1,12 +1,11 @@
 const mongoose = require("mongoose");
-const crypto = require("crypto");
 const workstationCenterSchema = new mongoose.Schema({
     centerId: {
         type: String,
         unique: true,
         index: true,
         immutable: true,
-        default: () => crypto.randomUUID()
+        required: true
     },
 
     name: {

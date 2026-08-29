@@ -1,7 +1,32 @@
-const { randomUUID } = require("crypto");
+// const { randomUUID } = require("crypto");
 const SanitizationRequest = require("../models/SanitizationRequest");
 const WorkstationCenter = require("../models/WorkstationCenter");
 const AppError = require("../utils/AppError");
+const Counter = require("../models/Counter");
+
+
+const generateRequestId = async () => {
+
+    const counter =
+        await Counter.findOneAndUpdate(
+            {
+                name: "sanitizationRequest",
+            },
+            {
+                $inc: {
+                    sequence: 1,
+                },
+            },
+            {
+                new: true,
+                upsert: true,
+            }
+        );
+
+    return `REQ-${String(
+        counter.sequence
+    ).padStart(4, "0")}`;
+};
 
 const createSanitizationRequest =
     async (data, user) => {
@@ -50,11 +75,12 @@ const createSanitizationRequest =
         // CREATE SANITIZATION REQUEST
         // --------------------------------------------------
 
+        const requestId = await generateRequestId();
+
         const request =
             await SanitizationRequest.create({
 
-                requestId:
-                    `REQ-${randomUUID()}`,
+                requestId,
 
                 customer:
                     user._id,
@@ -133,6 +159,14 @@ const getAllSanitizationRequests =
                     "customer",
                     "name email role"
                 )
+                .populate({
+                    path: "workstationCenter",
+                    select: "centerId name location status head",
+                    populate: {
+                        path: "head",
+                        select: "name email phone"
+                    }
+                })
                 .sort({
                     createdAt: -1,
                 });

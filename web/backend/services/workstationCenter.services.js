@@ -3,6 +3,31 @@ const User = require("../models/User");
 const Workstation = require("../models/WorkStation");
 const WorkstationCenter = require("../models/WorkstationCenter");
 const AppError = require("../utils/AppError");
+const Counter = require("../models/Counter");
+
+
+const generateCenterId = async () => {
+
+    const counter =
+        await Counter.findOneAndUpdate(
+            {
+                name: "workstationCenter"
+            },
+            {
+                $inc: {
+                    sequence: 1
+                }
+            },
+            {
+                new: true,
+                upsert: true
+            }
+        );
+
+    return `CTR-${String(
+        counter.sequence
+    ).padStart(4, "0")}`;
+};
 
 const createWorkstationCenter = async (data) => {
     const head = await User.findById(data.head);
@@ -38,9 +63,14 @@ const createWorkstationCenter = async (data) => {
             409
         );
     }
+    const centerId =
+        await generateCenterId();
 
     const workstationCenter =
-        await WorkstationCenter.create(data);
+        await WorkstationCenter.create({
+            ...data,
+            centerId
+        });
 
     return workstationCenter;
 };
@@ -283,12 +313,12 @@ const getActiveWorkstationCenters =
             await WorkstationCenter.find({
                 status: "ACTIVE"
             })
-            .select(
-                "centerId name location status"
-            )
-            .sort({
-                name: 1
-            });
+                .select(
+                    "centerId name location status"
+                )
+                .sort({
+                    name: 1
+                });
 
         return centers;
     };
@@ -327,14 +357,14 @@ const getMyWorkstationCenter = async (user) => {
         await WorkstationCenter.findOne({
             head: user._id
         })
-        .populate(
-            "head",
-            "name email"
-        )
-        .populate(
-            "employees",
-            "name email role status workstationCenter"
-        );
+            .populate(
+                "head",
+                "name email"
+            )
+            .populate(
+                "employees",
+                "name email role status workstationCenter"
+            );
 
 
     // ---------------------------------------------
@@ -357,16 +387,16 @@ const getMyWorkstationCenter = async (user) => {
         await Workstation.find({
             workstationCenter: center._id
         })
-        .populate(
-            "assignedEmployee",
-            "name email role status"
-        )
-        .select(
-            "workstationId name status connectionStatus hostname operatingSystem assignedEmployee enrolledAt"
-        )
-        .sort({
-            name: 1
-        });
+            .populate(
+                "assignedEmployee",
+                "name email role status"
+            )
+            .select(
+                "workstationId name status connectionStatus hostname operatingSystem assignedEmployee enrolledAt"
+            )
+            .sort({
+                name: 1
+            });
 
 
     // ---------------------------------------------
@@ -396,3 +426,4 @@ module.exports = {
     getActiveWorkstationCenters,
     getMyWorkstationCenter
 };
+
