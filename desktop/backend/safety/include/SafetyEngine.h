@@ -2,6 +2,7 @@
 #include "../../storage/include/StorageDevice.h"
 #include "DeviceIdentity.h"
 #include <vector>
+#include "SafetyResult.h"
 
 class SafetyEngine
 {
@@ -40,6 +41,9 @@ private:
     bool checkTargetIdentity(const StorageDevice &device);
 
 public:
+
+    SafetyResult evaluateWithResult(const StorageDevice &device);
+
     // Run enabled safety checks on the target.
     bool evaluate(const StorageDevice &device);
 
