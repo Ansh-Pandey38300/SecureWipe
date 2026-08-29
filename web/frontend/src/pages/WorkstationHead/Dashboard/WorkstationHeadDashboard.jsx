@@ -198,7 +198,7 @@ function WorkstationHeadDashboard() {
 
                     [requestId]: {
                         ...previous[
-                            requestId
+                        requestId
                         ],
 
                         [field]:
@@ -214,7 +214,7 @@ function WorkstationHeadDashboard() {
 
             const selected =
                 assignment[
-                    request.requestId
+                request.requestId
                 ] || {};
 
             if (
@@ -312,9 +312,9 @@ function WorkstationHeadDashboard() {
         employees.filter(
             (employee) =>
                 employee.role ===
-                    "WORKSTATION_EMPLOYEE" &&
+                "WORKSTATION_EMPLOYEE" &&
                 employee.status ===
-                    "ACTIVE"
+                "ACTIVE"
         );
 
 
@@ -338,6 +338,13 @@ function WorkstationHeadDashboard() {
 
                 <p className="mt-1 text-sm text-slate-500">
                     Welcome, {user?.name}.
+                </p>
+
+                <p className="mt-1 text-sm font-medium text-slate-700">
+                    Centre ID:{" "}
+                    <span className="font-mono text-slate-900">
+                        {center?.centerId || "N/A"}
+                    </span>
                 </p>
             </div>
 
@@ -567,7 +574,7 @@ function WorkstationHeadDashboard() {
 
                                 const selected =
                                     assignment[
-                                        request.requestId
+                                    request.requestId
                                     ] || {};
 
                                 return (
@@ -755,7 +762,7 @@ function WorkstationHeadDashboard() {
                                             className="mt-5 rounded-md bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                                         >
                                             {actionLoading ===
-                                            request.requestId
+                                                request.requestId
                                                 ? "Assigning..."
                                                 : "Assign Request"}
                                         </button>
