@@ -1,40 +1,42 @@
 #include <Windows.h>
 #include <iostream>
+
 #include "SafetyEngine.h"
 #include "WindowsStorageUtils.h"
 
-// Save the copy of the device selected by the user from the frontend
-
-void SafetyEngine::setExpectedTarget(const StorageDevice &device)
+void SafetyEngine::setExpectedTarget(
+    const StorageDevice &device)
 {
+    expectedTarget_.deviceId =
+        device.getDeviceId();
 
-    expectedTarget_.deviceId = device.getDeviceId();
+    expectedTarget_.model =
+        device.getModel();
 
-    expectedTarget_.model = device.getModel();
+    expectedTarget_.serialNumber =
+        device.getSerialNumber();
 
-    expectedTarget_.serialNumber = device.getSerialNumber();
-
-    expectedTarget_.capacityBytes = device.getCapacityBytes();
+    expectedTarget_.capacityBytes =
+        device.getCapacityBytes();
 
     hasExpectedTarget_ = true;
 }
 
-// Check 1: Current System Disk
-bool SafetyEngine::checkSystemDisk(const StorageDevice &device)
+bool SafetyEngine::checkSystemDisk(
+    const StorageDevice &device)
 {
     if (device.isSystemDisk())
         return false;
+
     return true;
 }
 
-// // Check 2: Current Boot Dependency
-// bool SafetyEngine::checkBootDependency(const StorageDevice &device)
-// {
-//     return true;
-// }
+bool SafetyEngine::checkBootDependency(
+    const StorageDevice &device)
+{
+    return true;
+}
 
-// Check 3: Mounted / In-use Volumes
-// target device ke volumes currently use/mounted toh nahi hain?
 bool SafetyEngine::checkMountedVolume(
     const StorageDevice &device)
 {
@@ -89,10 +91,6 @@ bool SafetyEngine::checkMountedVolume(
                     mountedPath[1] == L':' &&
                     mountedPath[2] == L'\\')
                 {
-                    // Example:
-                    // mountedPath = E:\
-                    // drive       = E:
-
                     std::wstring drive =
                         mountedPath.substr(0, 2);
 
@@ -137,19 +135,9 @@ bool SafetyEngine::checkMountedVolume(
     return true;
 }
 
-// Check 5: Physical Device Validation
-bool SafetyEngine::checkPhysicalDevice(const StorageDevice &device)
+bool SafetyEngine::checkPhysicalDevice(
+    const StorageDevice &device)
 {
-
-    /*
-        Check whether the discovered storage device has the
-        minimum physical-device information required before
-        a destructive operation.
-
-        This check validates the device description itself.
-        It does NOT verify the user's selected target identity.
-    */
-
     if (device.getDeviceId().empty())
     {
         return false;
@@ -178,112 +166,129 @@ bool SafetyEngine::checkPhysicalDevice(const StorageDevice &device)
     return true;
 }
 
-// Check 6: Target Identity
-bool SafetyEngine::checkTargetIdentity(const StorageDevice &device)
+bool SafetyEngine::checkTargetIdentity(
+    const StorageDevice &device)
 {
     if (!hasExpectedTarget_)
         return false;
 
-    /*
-    Check that the selected target has enough information
-    to identify it correctly before sanitization.
-
-    This prevents SecureWipe from wiping the wrong device
-    when the target cannot be clearly identified.
-    */
-
-    if (device.getDeviceId() != expectedTarget_.deviceId)
+    if (device.getDeviceId() !=
+        expectedTarget_.deviceId)
         return false;
 
-    if (device.getModel() != expectedTarget_.model)
+    if (device.getModel() !=
+        expectedTarget_.model)
         return false;
 
-    if (device.getSerialNumber() != expectedTarget_.serialNumber)
+    if (device.getSerialNumber() !=
+        expectedTarget_.serialNumber)
         return false;
 
-    if (device.getCapacityBytes() != expectedTarget_.capacityBytes)
+    if (device.getCapacityBytes() !=
+        expectedTarget_.capacityBytes)
         return false;
 
     return true;
 }
 
-SafetyResult SafetyEngine::evaluateWithResult(const StorageDevice &device)
+SafetyResult SafetyEngine::evaluateWithResult(
+    const StorageDevice &device)
 {
     SafetyResult result;
-    // Check 1:
+
+    result.isOverallSafe = true;
+
     if (checkSystemDisk(device))
     {
-        result.checks.push_back({"System Disk Check",
-                                 true,
-                                 "Target is not the current Windows system disk."});
+        result.checks.push_back({
+            "System Disk Check",
+            true,
+            "Target is not the current Windows system disk."
+        });
     }
     else
     {
-        result.checks.push_back({"System Disk Check",
-                                 false,
-                                 "Target is the current Windows system disk."});
+        result.checks.push_back({
+            "System Disk Check",
+            false,
+            "Target is the current Windows system disk."
+        });
+
         result.isOverallSafe = false;
     }
 
-    // // Check 2:
     if (checkBootDependency(device))
     {
-        result.checks.push_back({"Boot Dependency Check",
-                                 true,
-                                 "Target is not currently required for the boot process."});
+        result.checks.push_back({
+            "Boot Dependency Check",
+            true,
+            "Target is not currently required for the boot process."
+        });
     }
     else
     {
-        result.checks.push_back({"Boot Dependency Check",
-                                 false,
-                                 "The current Windows boot process depends on this device."});
+        result.checks.push_back({
+            "Boot Dependency Check",
+            false,
+            "The current Windows boot process depends on this device."
+        });
+
         result.isOverallSafe = false;
     }
 
-    // Check 3:
     if (checkMountedVolume(device))
     {
-        result.checks.push_back({"Mounted Volume Check",
-                                 true,
-                                 "No mounted or actively used volume was detected on the target."});
+        result.checks.push_back({
+            "Mounted Volume Check",
+            true,
+            "No mounted or actively used volume was detected on the target."
+        });
     }
     else
     {
-        result.checks.push_back({"Mounted Volume Check",
-                                 false,
-                                 "A volume on the target disk is currently mounted or in use."});
+        result.checks.push_back({
+            "Mounted Volume Check",
+            false,
+            "A volume on the target disk is currently mounted or in use."
+        });
 
         result.isOverallSafe = false;
     }
 
-    // Check 5:
     if (checkPhysicalDevice(device))
     {
-        result.checks.push_back({"Physical Device Check",
-                                 true,
-                                 "Required physical device information is available."});
+        result.checks.push_back({
+            "Physical Device Check",
+            true,
+            "Required physical device information is available."
+        });
     }
     else
     {
-        result.checks.push_back({"Physical Device Check",
-                                 false,
-                                 "Required physical device information is missing."});
+        result.checks.push_back({
+            "Physical Device Check",
+            false,
+            "Required physical device information is missing."
+        });
 
         result.isOverallSafe = false;
     }
 
-    // Check 6:
     if (checkTargetIdentity(device))
     {
-        result.checks.push_back({"Target Identity Check",
-                                 true,
-                                 "Target matches the device originally selected by the user."});
+        result.checks.push_back({
+            "Target Identity Check",
+            true,
+            "Target matches the device originally selected by the user."
+        });
     }
     else
     {
-        result.checks.push_back({"Target Identity Check",
-                                 false,
-                                 "Target does not match the device originally selected by the user."});
+        result.checks.push_back({
+            "Target Identity Check",
+            false,
+            "Target does not match the device originally selected by the user."
+        });
 
         result.isOverallSafe = false;
     }
@@ -306,17 +311,20 @@ SafetyResult SafetyEngine::evaluateWithResult(const StorageDevice &device)
     }
 
     return result;
-};
+}
 
-bool SafetyEngine::validateTarget(const std::vector<StorageDevice> &devices, StorageDevice &target)
+bool SafetyEngine::validateTarget(
+    const std::vector<StorageDevice> &devices,
+    StorageDevice &target)
 {
     if (!hasExpectedTarget_)
         return false;
 
-    for (std::size_t i = 0; i < devices.size(); ++i)
+    for (const auto &device : devices)
     {
-        if (checkTargetIdentity(devices[i]))
+        if (checkTargetIdentity(device))
         {
+            target = device;
             return true;
         }
     }
@@ -324,8 +332,11 @@ bool SafetyEngine::validateTarget(const std::vector<StorageDevice> &devices, Sto
     return false;
 }
 
-bool SafetyEngine::evaluate(const StorageDevice &device)
+bool SafetyEngine::evaluate(
+    const StorageDevice &device)
 {
-    SafetyResult result = evaluateWithResult(device);
+    SafetyResult result =
+        evaluateWithResult(device);
+
     return result.isOverallSafe;
 }
