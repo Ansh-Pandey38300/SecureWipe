@@ -14,7 +14,7 @@ There's a shared UI kit behind all of this — buttons, cards, modals, tables, l
 
 Customers can now submit a sanitization request: device/customer info, capacity (starting from 2 GB), method, device count, an asset identifier, a preferred date, notes, a safety warning, and a required consent checkbox before submitting. It has real field-level validation (required fields, email/phone format, length limits, valid capacity/device-count/method/date) with validation-on-blur and error clearing.
 
-Right now this submits to a mock endpoint, not a real backend — there's no sanitization-request API yet. The mock returns a fixed placeholder ID (`REQ-DEMO-001`). When the real backend exists, this needs to be swapped from mock submission to an actual API call, and a few things will need confirming with backend first: the real endpoint/method, auth requirements, exact field names expected, and what a real success response looks like.
+As of 27 Aug, this is now connected to a real backend — POST /api/sanitization-requests creates a request, GET /api/sanitization-requests/my retrieves a customer's own requests, and GET /api/sanitization-requests lets Admins see all requests. New requests are stored in MongoDB with PENDING status. Customer Dashboard now shows request/status, and Admin Dashboard shows incoming requests too.
 
 While working on this, existing validation on Login, Register, Workstation Center creation, Center lookup (both customer and admin side), and Assign Employees was also reviewed and tightened up.
 

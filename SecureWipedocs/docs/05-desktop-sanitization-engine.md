@@ -27,6 +27,9 @@ Note: media type (HDD vs SSD) is currently detected using "seek penalty" as the 
 ## Build setup
 CMake project with a `SecureWipeStorage` library target, public include directories configured, and separate test executables for StorageDevice and StorageManager. Got this working after sorting out a handful of the usual CMake headaches — include paths not found, wrong executable path, a stream-operator typo in the manager test, a `cbSize()` vs `cbSize` mistake in the discovery code.
 
+## Windows storage utility layer
+A dedicated WindowsStorageUtils namespace was added to hold Windows-specific storage helper functions, instead of scattering Windows API calls across multiple modules. Device classification and physical device detection were retested using this layer and passed on real hardware.
+
 ## Two decisions worth remembering
 
 **Fail closed.** If SecureWipe can't confidently determine what it's looking at, it should not guess — it blocks the operation instead of proceeding.
