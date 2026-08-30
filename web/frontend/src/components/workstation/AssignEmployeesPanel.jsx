@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-
-import { getAllUsers } from "../../services/userService";
-import { assignEmployeesToCenter } from "../../services/workstationCenterService";
-
+import { getEligibleEmployees, assignEmployeesToCenter } from "../../services/workstationCenterService";
 import Loading from "../common/Loading";
 import ErrorMessage from "../common/ErrorMessage";
 import EmptyState from "../common/EmptyState";
@@ -14,63 +11,61 @@ function AssignEmployeesPanel({
     existingEmployees = [],
     onAssigned,
 }) {
-    const [allUsers, setAllUsers] = useState([]);
+    const [eligibleEmployees, setEligibleEmployees] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [listError, setListError] = useState("");
     const [selectedIds, setSelectedIds] = useState([]);
     const [submitting, setSubmitting] = useState(false);
 
-    const existingIds = useMemo(() => {
-        return new Set(
-            existingEmployees.map((employee) =>
-                typeof employee === "object" ? employee._id : employee
-            )
-        );
-    }, [existingEmployees]);
-
     useEffect(() => {
-        const loadUsers = async () => {
+
+        const loadEmployees = async () => {
+
             setLoadingUsers(true);
             setListError("");
 
             try {
-                const response = await getAllUsers();
 
-                setAllUsers(
-                    Array.isArray(response)
-                        ? response
-                        : response.users || response.data || []
+                const response =
+                    await getEligibleEmployees(centerId);
+
+                setEligibleEmployees(
+                    response.data || []
                 );
+
             } catch (error) {
-                if (error.status === 403) {
-                    setListError(
-                        "The employee list is only available to Admin accounts right now. Ask an admin to assign employees to this center from the Admin > Workstation Centers page."
-                    );
-                } else if (error.status === 401) {
+
+                if (error.status === 401) {
+
                     setListError(
                         "Your session has expired. Please log in again."
                     );
-                } else {
+
+                } else if (error.status === 403) {
+
                     setListError(
-                        error.message || "Unable to load employees."
+                        "You are not authorized to view employees for this centre."
+                    );
+
+                } else {
+
+                    setListError(
+                        error.message ||
+                        "Unable to load eligible employees."
                     );
                 }
+
             } finally {
+
                 setLoadingUsers(false);
             }
         };
 
-        loadUsers();
-    }, [centerId]);
+        if (centerId) {
+            loadEmployees();
+        }
 
-    const eligibleEmployees = useMemo(() => {
-        return allUsers.filter(
-            (user) =>
-                user.role === "WORKSTATION_EMPLOYEE" &&
-                user.status === "ACTIVE" &&
-                !existingIds.has(user._id)
-        );
-    }, [allUsers, existingIds]);
+    }, [centerId]);
 
     const toggleSelected = (userId) => {
         setSelectedIds((previous) =>

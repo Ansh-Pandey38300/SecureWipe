@@ -87,3 +87,14 @@ export const getAllHeadSanitizationRequests =
 
         return response.data || [];
     };
+
+export const getEmployeeSanitizationRequests =
+    async () => {
+
+        const response =
+            await apiRequest(
+                "/api/sanitization-requests/employee"
+            );
+
+        return response.data || [];
+    };
