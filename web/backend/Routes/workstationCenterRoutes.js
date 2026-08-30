@@ -30,6 +30,16 @@ router.get(
 );
 
 router.get(
+    "/:id/eligible-employees",
+    Authenticate,
+    Authorize(
+        "ADMIN",
+        "WORKSTATION_HEAD"
+    ),
+    workstationController.getEligibleEmployees
+);
+
+router.get(
     "/:id",
     Authenticate,
     workstationController.getWorkstationCenterById

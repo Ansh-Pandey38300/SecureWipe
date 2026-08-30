@@ -54,3 +54,12 @@ export const getMyWorkstationCenter =
             }
         );
     };
+
+export const getEligibleEmployees = async (centerId) => {
+    return apiRequest(
+        `/api/workstation-centers/${centerId}/eligible-employees`,
+        {
+            method: "GET",
+        }
+    );
+};
