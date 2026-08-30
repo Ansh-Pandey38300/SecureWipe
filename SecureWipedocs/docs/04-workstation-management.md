@@ -26,6 +26,10 @@ There was also a smaller mix-up early on between the custom `centerId` (UUID, us
 ## Still needs confirming
 Subhranil ran tests for role-based Workstation Center access, duplicate-employee-assignment rejection, and the "head can only manage their own center" restriction, but the report never states pass/fail for these explicitly. Worth a quick follow-up before marking them tested.
 
+Workstations are now linked to a specific Workstation Center rather than existing as standalone entities. When a Workstation is created, the selected Center is resolved on the backend and its MongoDB _id is stored on the Workstation. Workstations can be created directly from the Center workflow, and are retrievable and displayed inside Center Details.
+
+Hierarchy: Workstation Center → Head → Employees → Workstations.
+
 ## Evidence
 Screenshot:
 Screenshot:

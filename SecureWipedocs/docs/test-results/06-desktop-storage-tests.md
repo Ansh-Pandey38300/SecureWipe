@@ -8,7 +8,11 @@ Physical device discovery was re-confirmed working — a real USB storage interf
 
 The following are NOT yet verified end-to-end: system-disk safety check (foundation only), boot-dependency safety (not implemented), mounted-volume safety (not implemented), OS-dependency safety (not implemented), target-identity recheck (foundation only, not verified).
 
-Evidence:
+27 Aug: WindowsStorageUtils — Pass. Physical device detection on real hardware — Pass (Samsung NVMe system disk + ~62GB USB flash drive both correctly identified). Device classification — Pass. Target Identity validation — Pass. SafetyEngine core validation — Pass. Windows BCD/system-partition detection — Pass. BCD partition → physical-disk mapping — REMAINING, not done. Evidence folder structure — created, not yet functional.
+
+28 Aug: SafetyEngine core checks — Pass. System Disk protection — Pass. Mounted Volume check — Pass. Physical Device validation — Pass. Target Identity validation — Pass. SafetyEngine target-validation workflow — Pass. Detailed SafetyResult reporting — implemented/designed (not yet fully integration-tested). Boot Dependency check — still pending, blocked on WindowsBootChecker.
+
+Evidence: 2 screenshots provided.
 Screenshot (StorageDevice/StorageManager console output):[Not provided]
 Screenshot (device discovery output):SS-hardware-test-pass.png
 PR: https://github.com/Subhranil123-ops/SecureWipe/pull/25

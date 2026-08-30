@@ -18,3 +18,5 @@ Two rules apply across the whole pipeline going forward:
 Also decided early on: destructive sanitization logic will not be built first. Device detection and identification come first, specifically so the system can safely understand what it's looking at before anything destructive is even possible.
 
 DeviceClassifier only describes a device — it does not decide whether that device is safe to wipe. That decision belongs entirely to SafetyEngine. The system will store an expected target identity and re-check it against a freshly discovered device immediately before sanitization, to avoid wiping the wrong device after selection. Boot/EFI/system-disk relationships are treated as a safety concern, not just another classification property.
+
+Windows-specific storage code is centralized in a WindowsStorageUtils namespace rather than scattered across modules, so it can be reused cleanly by higher-level components. Evidence will be represented as a structured EvidenceItem rather than unstructured logs, so results from detection, sanitization, verification, and certification stay traceable and consistent.
