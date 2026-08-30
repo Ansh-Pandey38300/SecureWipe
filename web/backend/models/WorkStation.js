@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const crypto = require("crypto");
 
 const workstationSchema = new mongoose.Schema(
     {
@@ -8,7 +7,7 @@ const workstationSchema = new mongoose.Schema(
             unique: true,
             index: true,
             immutable: true,
-            default: () => crypto.randomUUID()
+            required: true
         },
 
         name: {
@@ -16,6 +15,12 @@ const workstationSchema = new mongoose.Schema(
             required: true,
             trim: true,
             maxlength: 100
+        },
+
+        workstationCenter: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "WorkstationCenter",
+            required: true
         },
 
         assignedEmployee: {

@@ -1,17 +1,19 @@
 #pragma once
 #include "../../storage/include/StorageDevice.h"
 #include "DeviceIdentity.h"
+#include <vector>
+#include "SafetyResult.h"
 
 class SafetyEngine
 {
 private:
     DeviceIdentity expectedTarget_;
-    bool hasExpectedTarget_={false};
+    bool hasExpectedTarget_ = {false};
 
-     // Find the previously selected device
+    // Find the previously selected device
     // in the freshly discovered device list.
     bool findTarget(
-        const std::vector<StorageDevice>& devices,StorageDevice& target);
+        const std::vector<StorageDevice> &devices, StorageDevice &target);
 
     // Check 1:
     // Is the selected device the disk containing
@@ -28,11 +30,6 @@ private:
     // mounted or actively in use?
     bool checkMountedVolume(const StorageDevice &device);
 
-    // Check 4:
-    // Does the currently running OS depend on this device
-    // for resources such as pagefile, hibernation, crash dump, etc.?
-    bool checkOSDependencies(const StorageDevice &device);
-
     // Check 5:
     // Is this actually a physical storage device that
     // SecureWipe is allowed to sanitize?
@@ -44,7 +41,16 @@ private:
     bool checkTargetIdentity(const StorageDevice &device);
 
 public:
+
+    SafetyResult evaluateWithResult(const StorageDevice &device);
+
+    // Run enabled safety checks on the target.
     bool evaluate(const StorageDevice &device);
+
+    // Save the device selected by the user.
     void setExpectedTarget(const StorageDevice &device);
-     bool validateTarget(const std::vector<StorageDevice>& devices,StorageDevice& target);
+
+    // Find and validate the previously selected
+    // device in a freshly discovered device list.
+    bool validateTarget(const std::vector<StorageDevice> &devices, StorageDevice &target);
 };

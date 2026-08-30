@@ -1,9 +1,4 @@
-import {
-    BrowserRouter,
-    Navigate,
-    Route,
-    Routes,
-} from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, } from "react-router-dom";
 
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
@@ -24,6 +19,14 @@ import WorkstationCenter from "./pages/WorkstationHead/Center/WorkstationCenter"
 import WorkstationEmployeeDashboard from "./pages/WorkstationEmployee/Dashboard/WorkstationEmployeeDashboard";
 
 import CustomerDashboard from "./pages/Customer/Dashboard/CustomerDashboard";
+
+import CustomerSanitizationRequest from "./pages/Customer/SanitizationRequest/CustomerSanitizationRequest";
+
+import WorkstationHeadSanitizationRequests from "./pages/WorkstationHead/SanitizationRequests/WorkstationHeadSanitizationRequests";
+
+import WorkstationHeadWorkstations from "./pages/WorkstationHead/Workstations/WorkstationHeadWorkstations";
+
+
 
 function App() {
     return (
@@ -81,6 +84,7 @@ function App() {
                                     <AdminWorkstationCenters />
                                 }
                             />
+
                         </Route>
                     </Route>
 
@@ -102,6 +106,20 @@ function App() {
                                 path="dashboard"
                                 element={
                                     <WorkstationHeadDashboard />
+                                }
+                            />
+
+                            <Route
+                                path="sanitization-requests"
+                                element={
+                                    <WorkstationHeadSanitizationRequests />
+                                }
+                            />
+
+                            <Route
+                                path="workstations"
+                                element={
+                                    <WorkstationHeadWorkstations />
                                 }
                             />
 
@@ -155,6 +173,12 @@ function App() {
                                 path="dashboard"
                                 element={
                                     <CustomerDashboard />
+                                }
+                            />
+                            <Route
+                                path="sanitization-request"
+                                element={
+                                    <CustomerSanitizationRequest />
                                 }
                             />
                         </Route>

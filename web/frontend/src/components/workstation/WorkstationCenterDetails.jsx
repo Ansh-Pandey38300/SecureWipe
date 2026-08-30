@@ -29,10 +29,131 @@ function LocationRow({ location }) {
                         <span className="text-slate-400">
                             {field.label}:{" "}
                         </span>
+
                         {field.value}
                     </span>
                 ))}
             </dd>
+        </div>
+    );
+}
+
+function WorkstationRow({ workstation }) {
+    if (!workstation) {
+        return null;
+    }
+
+    const operatingSystem =
+        workstation.operatingSystem;
+
+    return (
+        <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p className="text-sm font-medium text-slate-800">
+                        {workstation.name ||
+                            "Unnamed Workstation"}
+                    </p>
+
+                    {workstation.workstationId && (
+                        <p className="mt-1 break-all text-xs text-slate-400">
+                            ID:{" "}
+                            {workstation.workstationId}
+                        </p>
+                    )}
+                </div>
+
+                {workstation.status && (
+                    <Badge
+                        variant={
+                            workstation.status ===
+                            "ACTIVE"
+                                ? "success"
+                                : "default"
+                        }
+                    >
+                        {workstation.status}
+                    </Badge>
+                )}
+            </div>
+
+            <div className="mt-3 space-y-1 text-xs text-slate-500">
+                {workstation.connectionStatus && (
+                    <p>
+                        <span className="text-slate-400">
+                            Connection:{" "}
+                        </span>
+
+                        {workstation.connectionStatus}
+                    </p>
+                )}
+
+                {workstation.hostname && (
+                    <p>
+                        <span className="text-slate-400">
+                            Hostname:{" "}
+                        </span>
+
+                        {workstation.hostname}
+                    </p>
+                )}
+
+                {operatingSystem && (
+                    <div>
+                        <p className="text-slate-400">
+                            Operating System:
+                        </p>
+
+                        {typeof operatingSystem ===
+                        "object" ? (
+                            <div className="mt-1 space-y-1 pl-2">
+                                {operatingSystem.name && (
+                                    <p>
+                                        Name:{" "}
+                                        {
+                                            operatingSystem.name
+                                        }
+                                    </p>
+                                )}
+
+                                {operatingSystem.version && (
+                                    <p>
+                                        Version:{" "}
+                                        {
+                                            operatingSystem.version
+                                        }
+                                    </p>
+                                )}
+
+                                {operatingSystem.architecture && (
+                                    <p>
+                                        Architecture:{" "}
+                                        {
+                                            operatingSystem.architecture
+                                        }
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="mt-1">
+                                {operatingSystem}
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                {workstation.enrolledAt && (
+                    <p>
+                        <span className="text-slate-400">
+                            Enrolled:{" "}
+                        </span>
+
+                        {new Date(
+                            workstation.enrolledAt
+                        ).toLocaleString()}
+                    </p>
+                )}
+            </div>
         </div>
     );
 }
@@ -44,10 +165,13 @@ function WorkstationCenterDetails({ center }) {
 
     const head = center.head;
     const employees = center.employees;
+    const workstations = center.workstations;
 
     return (
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <dl className="space-y-4">
+
+                {/* Center Name */}
                 <div>
                     <dt className="text-xs font-medium uppercase text-slate-400">
                         Name
@@ -58,6 +182,7 @@ function WorkstationCenterDetails({ center }) {
                     </dd>
                 </div>
 
+                {/* Center Status */}
                 <div>
                     <dt className="text-xs font-medium uppercase text-slate-400">
                         Status
@@ -66,16 +191,19 @@ function WorkstationCenterDetails({ center }) {
                     <dd className="mt-1">
                         <Badge
                             variant={
-                                center.status === "ACTIVE"
+                                center.status ===
+                                "ACTIVE"
                                     ? "success"
                                     : "default"
                             }
                         >
-                            {center.status || "UNKNOWN"}
+                            {center.status ||
+                                "UNKNOWN"}
                         </Badge>
                     </dd>
                 </div>
 
+                {/* Center ID */}
                 {center.centerId && (
                     <div>
                         <dt className="text-xs font-medium uppercase text-slate-400">
@@ -88,8 +216,12 @@ function WorkstationCenterDetails({ center }) {
                     </div>
                 )}
 
-                <LocationRow location={center.location} />
+                {/* Location */}
+                <LocationRow
+                    location={center.location}
+                />
 
+                {/* Workstation Head */}
                 {head && (
                     <div>
                         <dt className="text-xs font-medium uppercase text-slate-400">
@@ -97,61 +229,110 @@ function WorkstationCenterDetails({ center }) {
                         </dt>
 
                         <dd className="mt-1 text-sm text-slate-800">
-                            {typeof head === "object"
-                                ? head.name || head.email || head._id
+                            {typeof head ===
+                            "object"
+                                ? head.name ||
+                                  head.email ||
+                                  head._id
                                 : head}
                         </dd>
                     </div>
                 )}
 
+                {/* Employees */}
                 {Array.isArray(employees) && (
                     <div>
                         <dt className="text-xs font-medium uppercase text-slate-400">
-                            Employees ({employees.length})
+                            Employees (
+                            {employees.length})
                         </dt>
 
-                        {employees.length === 0 ? (
+                        {employees.length ===
+                        0 ? (
                             <dd className="mt-1 text-sm text-slate-500">
                                 No employees assigned yet.
                             </dd>
                         ) : (
                             <dd className="mt-2 space-y-2">
-                                {employees.map((employee) => (
-                                    <div
-                                        key={
-                                            typeof employee === "object"
-                                                ? employee._id
-                                                : employee
-                                        }
-                                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
-                                    >
-                                        <span className="text-slate-800">
-                                            {typeof employee === "object"
-                                                ? employee.name ||
-                                                  employee.email ||
-                                                  employee._id
-                                                : employee}
-                                        </span>
+                                {employees.map(
+                                    (employee) => (
+                                        <div
+                                            key={
+                                                typeof employee ===
+                                                "object"
+                                                    ? employee._id
+                                                    : employee
+                                            }
+                                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+                                        >
+                                            <span className="text-slate-800">
+                                                {typeof employee ===
+                                                "object"
+                                                    ? employee.name ||
+                                                      employee.email ||
+                                                      employee._id
+                                                    : employee}
+                                            </span>
 
-                                        {typeof employee === "object" &&
-                                            employee.status && (
-                                                <Badge
-                                                    variant={
-                                                        employee.status ===
-                                                        "ACTIVE"
-                                                            ? "success"
-                                                            : "default"
-                                                    }
-                                                >
-                                                    {employee.status}
-                                                </Badge>
-                                            )}
-                                    </div>
-                                ))}
+                                            {typeof employee ===
+                                                "object" &&
+                                                employee.status && (
+                                                    <Badge
+                                                        variant={
+                                                            employee.status ===
+                                                            "ACTIVE"
+                                                                ? "success"
+                                                                : "default"
+                                                        }
+                                                    >
+                                                        {
+                                                            employee.status
+                                                        }
+                                                    </Badge>
+                                                )}
+                                        </div>
+                                    )
+                                )}
                             </dd>
                         )}
                     </div>
                 )}
+
+                {/* Workstations */}
+                {Array.isArray(
+                    workstations
+                ) && (
+                    <div>
+                        <dt className="text-xs font-medium uppercase text-slate-400">
+                            Workstations (
+                            {workstations.length})
+                        </dt>
+
+                        {workstations.length ===
+                        0 ? (
+                            <dd className="mt-1 text-sm text-slate-500">
+                                No workstations added yet.
+                            </dd>
+                        ) : (
+                            <dd className="mt-2 space-y-3">
+                                {workstations.map(
+                                    (workstation) => (
+                                        <WorkstationRow
+                                            key={
+                                                workstation._id ||
+                                                workstation.workstationId
+                                            }
+                                            workstation={
+                                                workstation
+                                            }
+                                        />
+                                    )
+                                )}
+                            </dd>
+                        )}
+                    </div>
+                )}
+
             </dl>
         </div>
     );
