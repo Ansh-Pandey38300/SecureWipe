@@ -16,6 +16,7 @@ class AuthManager;
 class DeviceController;
 class DeviceTableModel;
 class DeviceDetailsPage;
+class SanitizationRequestService;
 
 class MainWindow : public QMainWindow
 {
@@ -29,6 +30,7 @@ private:
     Ui::MainWindow *ui;
 
     AuthManager *authManager;
+    SanitizationRequestService *sanitizationRequestService;
 
     DeviceController *deviceController;
     DeviceTableModel *deviceTableModel;

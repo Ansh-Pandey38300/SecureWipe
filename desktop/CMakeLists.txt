@@ -36,6 +36,9 @@ qt_add_executable(SecureWipe
     frontend/services/StorageService.cpp
     frontend/services/StorageService.h
 
+    frontend/services/SanitizationRequestService.cpp
+    frontend/services/SanitizationRequestService.h
+
     frontend/dialogs/DeviceDetailsDialog.cpp
     frontend/dialogs/DeviceDetailsDialog.h
 
