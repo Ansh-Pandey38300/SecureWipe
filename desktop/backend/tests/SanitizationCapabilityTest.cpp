@@ -1,25 +1,21 @@
-#include <iostream>
-#include <vector>
-
 #include "SanitizationCapability.h"
 #include "StorageDevice.h"
 #include "WindowsStorageDiscovery.h"
 
+#include <iostream>
+#include <vector>
 
 int main()
 {
     std::cout
         << "========================================\n"
-        << " SecureWipe Sanitization Capability Test\n"
+        << " Sanitization Capability Test\n"
         << "========================================\n";
-
 
     WindowsStorageDiscovery discovery;
 
-
     std::vector<StorageDevice> devices =
         discovery.discover();
-
 
     if (devices.empty())
     {
@@ -29,161 +25,226 @@ int main()
         return 1;
     }
 
-
     std::cout
-        << "\nDetected Devices: "
+        << "\nDetected devices: "
         << devices.size()
-        << "\n";
+        << '\n';
 
+    bool testPassed = true;
 
     for (std::size_t i = 0;
          i < devices.size();
          ++i)
     {
-        const StorageDevice& device =
+        const StorageDevice &device =
             devices[i];
-
 
         std::cout
             << "\n----------------------------------------\n";
 
-
         std::cout
             << "Device "
             << i + 1
-            << "\n";
+            << '\n';
 
+        std::cout
+            << "----------------------------------------\n";
 
         std::cout
             << "Device ID : "
             << device.getDeviceId()
-            << "\n";
-
+            << '\n';
 
         std::cout
             << "Model     : "
             << device.getModel()
-            << "\n";
-
+            << '\n';
 
         std::cout
             << "Serial    : "
             << device.getSerialNumber()
-            << "\n";
-
+            << '\n';
 
         std::cout
             << "Interface : "
             << device.getInterfaceType()
-            << "\n";
+            << '\n';
 
-
-        // ----------------------------------------------------
-        // Run Capability Engine
-        // ----------------------------------------------------
+        std::cout
+            << "\nRunning sanitization capability "
+               "detection...\n";
 
         SanitizationCapability capability =
             detectSanitizationCapability(
                 device);
 
-
-        // ----------------------------------------------------
-        // Capability result
-        // ----------------------------------------------------
+        std::cout
+            << "\n========== Capability Result ==========\n";
 
         std::cout
-            << "\nSanitization Capability\n";
-
-
-        std::cout
-            << "USB Device                    : "
+            << "USB Device                  : "
             << (capability.isUsbDevice
                     ? "YES"
                     : "NO")
-            << "\n";
-
+            << '\n';
 
         std::cout
-            << "Storage Property Query        : "
+            << "Storage Property Query      : "
             << (capability.storagePropertyQueryAvailable
-                    ? "SUCCESS"
-                    : "FAILED")
-            << "\n";
-
+                    ? "AVAILABLE"
+                    : "NOT AVAILABLE")
+            << '\n';
 
         std::cout
-            << "SCSI Path Available           : "
+            << "SCSI Path                   : "
             << (capability.scsiPathAvailable
-                    ? "YES"
-                    : "NO")
-            << "\n";
-
+                    ? "AVAILABLE"
+                    : "NOT AVAILABLE")
+            << '\n';
 
         std::cout
-            << "Native Sanitize Support       : ";
+            << "NVMe Identify               : "
+            << (capability.nvmeIdentifyAvailable
+                    ? "AVAILABLE"
+                    : "NOT AVAILABLE")
+            << '\n';
 
+        std::cout
+            << "NVMe Crypto Erase           : "
+            << (capability.nvmeCryptoEraseSupported
+                    ? "SUPPORTED"
+                    : "NOT SUPPORTED")
+            << '\n';
 
-        switch (
-            capability.nativeSanitizeSupported)
-        {
-        case NativeSanitizeSupport::SUPPORTED:
+        std::cout
+            << "NVMe Block Erase            : "
+            << (capability.nvmeBlockEraseSupported
+                    ? "SUPPORTED"
+                    : "NOT SUPPORTED")
+            << '\n';
 
-            std::cout
-                << "SUPPORTED\n";
+        std::cout
+            << "NVMe Overwrite              : "
+            << (capability.nvmeOverwriteSupported
+                    ? "SUPPORTED"
+                    : "NOT SUPPORTED")
+            << '\n';
 
-            break;
-
-
-        case NativeSanitizeSupport::NOT_SUPPORTED:
-
-            std::cout
-                << "NOT SUPPORTED\n";
-
-            break;
-
-
-        case NativeSanitizeSupport::UNKNOWN:
-
-        default:
-
-            std::cout
-                << "UNKNOWN\n";
-
-            break;
-        }
-
+        std::cout
+            << "Native Sanitize             : "
+            << (capability.nativeSanitizeSupported ==
+                        NativeSanitizeSupport::SUPPORTED
+                    ? "SUPPORTED"
+                    : "NOT SUPPORTED")
+            << '\n';
 
         // ----------------------------------------------------
-        // Current communication result
+        // Basic consistency checks
+        // ----------------------------------------------------
+
+        bool deviceTestPassed = true;
+
+        if (device.getDeviceId().empty())
+        {
+            std::cout
+                << "\nFAIL: Device ID is empty.\n";
+
+            deviceTestPassed = false;
+        }
+
+        if (device.getInterfaceType().empty())
+        {
+            std::cout
+                << "\nFAIL: Interface type is empty.\n";
+
+            deviceTestPassed = false;
+        }
+
+        // ----------------------------------------------------
+        // NVMe consistency checks
+        // ----------------------------------------------------
+
+        if (device.getInterfaceType() == "NVMe")
+        {
+            if (!capability.nvmeIdentifyAvailable)
+            {
+                std::cout
+                    << "\nWARNING: NVMe Identify "
+                       "information unavailable.\n";
+            }
+
+            bool anyNvmeMethod =
+                capability.nvmeCryptoEraseSupported ||
+                capability.nvmeBlockEraseSupported ||
+                capability.nvmeOverwriteSupported;
+
+            if (anyNvmeMethod &&
+                capability.nativeSanitizeSupported !=
+                    NativeSanitizeSupport::SUPPORTED)
+            {
+                std::cout
+                    << "\nFAIL: NVMe sanitize method "
+                       "reported but native sanitize "
+                       "capability is NOT SUPPORTED.\n";
+
+                deviceTestPassed = false;
+            }
+
+            if (!anyNvmeMethod &&
+                capability.nativeSanitizeSupported ==
+                    NativeSanitizeSupport::SUPPORTED)
+            {
+                std::cout
+                    << "\nFAIL: Native sanitize reported "
+                       "SUPPORTED but no NVMe sanitize "
+                       "method is available.\n";
+
+                deviceTestPassed = false;
+            }
+        }
+
+        // ----------------------------------------------------
+        // USB consistency checks
+        // ----------------------------------------------------
+
+        if (device.getInterfaceType() == "USB")
+        {
+            if (!capability.isUsbDevice)
+            {
+                std::cout
+                    << "\nFAIL: Device is USB but "
+                       "isUsbDevice is false.\n";
+
+                deviceTestPassed = false;
+            }
+        }
+
+        // ----------------------------------------------------
+        // Final device result
         // ----------------------------------------------------
 
         std::cout
-            << "\nCurrent Capability Result     : ";
+            << "\nCapability Test Result: "
+            << (deviceTestPassed
+                    ? "PASS"
+                    : "FAIL")
+            << '\n';
 
-
-        if (capability.scsiPathAvailable)
+        if (!deviceTestPassed)
         {
-            std::cout
-                << "SCSI communication test PASSED\n";
+            testPassed = false;
         }
-        else
-        {
-            std::cout
-                << "SCSI communication test FAILED\n";
-        }
-
-
-        std::cout
-            << "\nMethod Selection              : "
-            << "NOT IMPLEMENTED YET\n";
     }
-
 
     std::cout
         << "\n========================================\n"
-        << "       CAPABILITY TEST COMPLETE\n"
-        << "========================================\n";
+        << " Overall Test Result: "
+        << (testPassed
+                ? "PASS"
+                : "FAIL")
+        << "\n========================================\n";
 
-
-    return 0;
+    return testPassed
+               ? 0
+               : 1;
 }
