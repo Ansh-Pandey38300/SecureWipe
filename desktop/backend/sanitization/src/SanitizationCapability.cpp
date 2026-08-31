@@ -1,6 +1,6 @@
 #include "SanitizationCapability.h"
 #include "StorageDevice.h"
-
+#include "NvmeCapability.h"
 #include <Windows.h>
 #include <winioctl.h>
 #include <ntddscsi.h>
@@ -9,7 +9,6 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
-
 
 // ============================================================
 // SCSI INQUIRY Request
@@ -26,13 +25,12 @@ struct ScsiInquiryRequest
     UCHAR dataBuffer[96];
 };
 
-
 // ============================================================
 // Decode fixed-width SCSI text
 // ============================================================
 
 static std::string decodeScsiText(
-    const UCHAR* buffer,
+    const UCHAR *buffer,
     std::size_t length)
 {
     std::string result;
@@ -50,116 +48,96 @@ static std::string decodeScsiText(
         result += character;
     }
 
-
     while (!result.empty() &&
            result.back() == ' ')
     {
         result.pop_back();
     }
 
-
     return result;
 }
-
 
 // ============================================================
 // Decode SCSI INQUIRY response
 // ============================================================
 
 static void decodeInquiryResponse(
-    const UCHAR* dataBuffer)
+    const UCHAR *dataBuffer)
 {
     int peripheralDeviceType =
         dataBuffer[0] & 0x1F;
 
-
     bool removable =
         (dataBuffer[1] & 0x80) != 0;
-
 
     int scsiVersion =
         dataBuffer[2] & 0x07;
 
-
     int responseDataFormat =
         dataBuffer[3] & 0x0F;
-
 
     int additionalLength =
         static_cast<int>(
             dataBuffer[4]);
-
 
     std::string vendor =
         decodeScsiText(
             &dataBuffer[8],
             8);
 
-
     std::string product =
         decodeScsiText(
             &dataBuffer[16],
             16);
-
 
     std::string revision =
         decodeScsiText(
             &dataBuffer[32],
             4);
 
-
     std::cout
         << "\nDecoded INQUIRY Information\n";
-
 
     std::cout
         << "Peripheral Device Type : "
         << peripheralDeviceType
         << '\n';
 
-
     std::cout
         << "Removable Medium       : "
         << (removable ? "YES" : "NO")
         << '\n';
-
 
     std::cout
         << "SCSI Version           : "
         << scsiVersion
         << '\n';
 
-
     std::cout
         << "Response Data Format   : "
         << responseDataFormat
         << '\n';
-
 
     std::cout
         << "Additional Length      : "
         << additionalLength
         << '\n';
 
-
     std::cout
         << "Vendor                 : "
         << vendor
         << '\n';
-
 
     std::cout
         << "Product                : "
         << product
         << '\n';
 
-
     std::cout
         << "Revision               : "
         << revision
         << '\n';
 }
-
 
 // ============================================================
 // Query Windows Storage Properties
@@ -176,23 +154,17 @@ static bool queryStorageProperties(
     if (deviceHandle == INVALID_HANDLE_VALUE)
         return false;
 
-
     STORAGE_PROPERTY_QUERY query{};
-
 
     query.PropertyId =
         StorageDeviceProperty;
 
-
     query.QueryType =
         PropertyStandardQuery;
 
-
     BYTE buffer[1024]{};
 
-
     DWORD bytesReturned = 0;
-
 
     BOOL success =
         DeviceIoControl(
@@ -210,22 +182,18 @@ static bool queryStorageProperties(
 
             nullptr);
 
-
     if (!success)
     {
         std::cout
             << "\nStorage property query failed.\n";
-
 
         std::cout
             << "Windows error: "
             << GetLastError()
             << '\n';
 
-
         return false;
     }
-
 
     if (bytesReturned <
         sizeof(STORAGE_DEVICE_DESCRIPTOR))
@@ -236,16 +204,13 @@ static bool queryStorageProperties(
         return false;
     }
 
-
-    STORAGE_DEVICE_DESCRIPTOR* descriptor =
+    STORAGE_DEVICE_DESCRIPTOR *descriptor =
         reinterpret_cast<
-            STORAGE_DEVICE_DESCRIPTOR*>(
-                buffer);
-
+            STORAGE_DEVICE_DESCRIPTOR *>(
+            buffer);
 
     std::cout
         << "\nWindows Storage Property Information\n";
-
 
     // --------------------------------------------------------
     // Bus Type
@@ -253,7 +218,6 @@ static bool queryStorageProperties(
 
     std::cout
         << "Bus Type: ";
-
 
     switch (descriptor->BusType)
     {
@@ -264,14 +228,12 @@ static bool queryStorageProperties(
 
         break;
 
-
     case BusTypeScsi:
 
         std::cout
             << "SCSI";
 
         break;
-
 
     case BusTypeAta:
 
@@ -280,7 +242,6 @@ static bool queryStorageProperties(
 
         break;
 
-
     case BusTypeSata:
 
         std::cout
@@ -288,14 +249,12 @@ static bool queryStorageProperties(
 
         break;
 
-
     case BusTypeNvme:
 
         std::cout
             << "NVMe";
 
         break;
-
 
     default:
 
@@ -305,10 +264,8 @@ static bool queryStorageProperties(
         break;
     }
 
-
     std::cout
         << '\n';
-
 
     // --------------------------------------------------------
     // Device Type
@@ -319,7 +276,6 @@ static bool queryStorageProperties(
         << static_cast<int>(
                descriptor->DeviceType)
         << '\n';
-
 
     // --------------------------------------------------------
     // Removable media
@@ -332,7 +288,6 @@ static bool queryStorageProperties(
                 : "NO")
         << '\n';
 
-
     // --------------------------------------------------------
     // Vendor ID
     // --------------------------------------------------------
@@ -340,18 +295,16 @@ static bool queryStorageProperties(
     if (descriptor->VendorIdOffset != 0 &&
         descriptor->VendorIdOffset < bytesReturned)
     {
-        const char* vendor =
-            reinterpret_cast<const char*>(
+        const char *vendor =
+            reinterpret_cast<const char *>(
                 buffer +
                 descriptor->VendorIdOffset);
-
 
         std::cout
             << "Windows Vendor ID: "
             << vendor
             << '\n';
     }
-
 
     // --------------------------------------------------------
     // Product ID
@@ -360,11 +313,10 @@ static bool queryStorageProperties(
     if (descriptor->ProductIdOffset != 0 &&
         descriptor->ProductIdOffset < bytesReturned)
     {
-        const char* product =
-            reinterpret_cast<const char*>(
+        const char *product =
+            reinterpret_cast<const char *>(
                 buffer +
                 descriptor->ProductIdOffset);
-
 
         std::cout
             << "Windows Product ID: "
@@ -372,17 +324,15 @@ static bool queryStorageProperties(
             << '\n';
     }
 
-
     return true;
 }
-
 
 // ============================================================
 // Print SCSI Sense Data
 // ============================================================
 
 static void printSenseData(
-    const UCHAR* senseBuffer,
+    const UCHAR *senseBuffer,
     UCHAR senseLength)
 {
     if (senseBuffer == nullptr ||
@@ -394,14 +344,11 @@ static void printSenseData(
         return;
     }
 
-
     std::cout
         << "\nSCSI Sense Data\n";
 
-
     UCHAR responseCode =
         senseBuffer[0] & 0x7F;
-
 
     if (responseCode == 0x70 ||
         responseCode == 0x71)
@@ -417,10 +364,8 @@ static void printSenseData(
             UCHAR ascq =
                 senseBuffer[13];
 
-
             std::cout
                 << "Sense Format : Fixed\n";
-
 
             std::cout
                 << "Response Code: 0x"
@@ -430,7 +375,6 @@ static void printSenseData(
                 << std::dec
                 << '\n';
 
-
             std::cout
                 << "Sense Key    : 0x"
                 << std::hex
@@ -438,7 +382,6 @@ static void printSenseData(
                        senseKey)
                 << std::dec
                 << '\n';
-
 
             std::cout
                 << "ASC          : 0x"
@@ -449,7 +392,6 @@ static void printSenseData(
                        asc)
                 << std::dec
                 << '\n';
-
 
             std::cout
                 << "ASCQ         : 0x"
@@ -476,10 +418,8 @@ static void printSenseData(
             UCHAR ascq =
                 senseBuffer[3];
 
-
             std::cout
                 << "Sense Format : Descriptor\n";
-
 
             std::cout
                 << "Response Code: 0x"
@@ -489,7 +429,6 @@ static void printSenseData(
                 << std::dec
                 << '\n';
 
-
             std::cout
                 << "Sense Key    : 0x"
                 << std::hex
@@ -497,7 +436,6 @@ static void printSenseData(
                        senseKey)
                 << std::dec
                 << '\n';
-
 
             std::cout
                 << "ASC          : 0x"
@@ -508,7 +446,6 @@ static void printSenseData(
                        asc)
                 << std::dec
                 << '\n';
-
 
             std::cout
                 << "ASCQ         : 0x"
@@ -527,10 +464,8 @@ static void printSenseData(
             << "Unknown or invalid sense format.\n";
     }
 
-
     std::cout
         << "Raw Sense Data:\n";
-
 
     for (int i = 0;
          i < static_cast<int>(
@@ -545,19 +480,16 @@ static void printSenseData(
                    senseBuffer[i])
             << ' ';
 
-
         if ((i + 1) % 16 == 0)
         {
             std::cout << '\n';
         }
     }
 
-
     std::cout
         << std::dec
         << '\n';
 }
-
 
 // ============================================================
 // SCSI INQUIRY
@@ -569,45 +501,35 @@ static bool testScsiPassThrough(
     if (deviceHandle == INVALID_HANDLE_VALUE)
         return false;
 
-
     ScsiInquiryRequest request{};
-
 
     request.spt.Length =
         sizeof(SCSI_PASS_THROUGH);
 
-
     request.spt.CdbLength =
         6;
-
 
     request.spt.DataIn =
         SCSI_IOCTL_DATA_IN;
 
-
     request.spt.DataTransferLength =
         sizeof(request.dataBuffer);
 
-
     request.spt.TimeOutValue =
         10;
-
 
     request.spt.DataBufferOffset =
         offsetof(
             ScsiInquiryRequest,
             dataBuffer);
 
-
     request.spt.SenseInfoLength =
         sizeof(request.senseBuffer);
-
 
     request.spt.SenseInfoOffset =
         offsetof(
             ScsiInquiryRequest,
             senseBuffer);
-
 
     // --------------------------------------------------------
     // SCSI INQUIRY
@@ -616,13 +538,10 @@ static bool testScsiPassThrough(
     request.spt.Cdb[0] =
         0x12;
 
-
     request.spt.Cdb[4] =
         sizeof(request.dataBuffer);
 
-
     DWORD bytesReturned = 0;
-
 
     BOOL success =
         DeviceIoControl(
@@ -640,22 +559,18 @@ static bool testScsiPassThrough(
 
             nullptr);
 
-
     if (!success)
     {
         std::cout
             << "SCSI INQUIRY failed.\n";
-
 
         std::cout
             << "Windows error: "
             << GetLastError()
             << '\n';
 
-
         return false;
     }
-
 
     if (request.spt.ScsiStatus != 0)
     {
@@ -666,45 +581,27 @@ static bool testScsiPassThrough(
                    request.spt.ScsiStatus)
             << '\n';
 
-
         printSenseData(
             request.senseBuffer,
             request.spt.SenseInfoLength);
 
-
         return false;
     }
-
 
     std::cout
         << "\nSCSI INQUIRY successful.\n";
 
-
     decodeInquiryResponse(
         request.dataBuffer);
-
 
     return true;
 }
 
-
-// ============================================================
 // Detect Sanitization Capability
-// ============================================================
 
-#include "ScsiCapability.h"
-#include "StoragePropertyCapability.h"
-
-#include <Windows.h>
-
-#include <iostream>
-
-
-SanitizationCapability detectSanitizationCapability(
-    const StorageDevice& device)
+SanitizationCapability detectSanitizationCapability(const StorageDevice &device)
 {
     SanitizationCapability capability;
-
 
     // --------------------------------------------------------
     // Step 1: Existing interface information
@@ -716,7 +613,6 @@ SanitizationCapability detectSanitizationCapability(
         capability.isUsbDevice = true;
     }
 
-
     // --------------------------------------------------------
     // Step 2: Open physical device
     // Open physical storage device
@@ -727,10 +623,10 @@ SanitizationCapability detectSanitizationCapability(
             device.getDeviceId().c_str(),
 
             GENERIC_READ |
-            GENERIC_WRITE,
+                GENERIC_WRITE,
 
             FILE_SHARE_READ |
-            FILE_SHARE_WRITE,
+                FILE_SHARE_WRITE,
 
             nullptr,
 
@@ -740,22 +636,18 @@ SanitizationCapability detectSanitizationCapability(
 
             nullptr);
 
-
     if (deviceHandle == INVALID_HANDLE_VALUE)
     {
         DWORD error =
             GetLastError();
 
-
         std::cout
             << "Unable to open storage device.\n";
-
 
         std::cout
             << "Windows error: "
             << error
             << '\n';
-
 
         std::cout
             << "Unable to open storage device.\n";
@@ -768,7 +660,6 @@ SanitizationCapability detectSanitizationCapability(
         return capability;
     }
 
-
     // --------------------------------------------------------
     // Step 3: Query Windows storage properties
     //
@@ -780,19 +671,70 @@ SanitizationCapability detectSanitizationCapability(
         queryStorageProperties(
             deviceHandle);
 
-
-    // --------------------------------------------------------
-    // Step 4: Test SCSI communication
+    // ========================================================
+    // Step 4: Protocol-specific capability detection
     //
-    // We keep INQUIRY because it already works on
-    // both your NVMe and USB devices.
-    // SCSI capability test
+    // USB:
+    //     Use SCSI capability path.
+    //
+    // NVMe:
+    //     Use dedicated NVMe capability path.
+    //
+    // Other interfaces:
+    //     No protocol-specific capability test yet.
+    // ========================================================
+
+    // --------------------------------------------------------
+    // USB
     // --------------------------------------------------------
 
-    capability.scsiPathAvailable =
-        testScsiPassThrough(
-            deviceHandle);
+    if (device.getInterfaceType() == "USB")
+    {
+        std::cout << "\nUSB device detected.\n";
 
+        std::cout << "Running SCSI capability detection...\n";
+
+        capability.scsiPathAvailable = testScsiPassThrough(deviceHandle);
+    }
+
+    // --------------------------------------------------------
+    // NVMe
+    // --------------------------------------------------------
+
+    else if (device.getInterfaceType() == "NVMe")
+    {
+        std::cout << "\nNVMe device detected.\n";
+
+        std::cout << "Running NVMe capability detection...\n";
+
+        bool nvmeSuccess = detectNvmeCapability(deviceHandle, capability);
+
+        if (!nvmeSuccess)
+        {
+            std::cout << "NVMe capability detection failed.\n";
+        }
+    }
+
+    // --------------------------------------------------------
+    // Other interface
+    // --------------------------------------------------------
+
+    else
+    {
+        std::cout << "\nNo protocol-specific capability "
+                     "detector available for interface: "
+                  << device.getInterfaceType()
+                  << '\n';
+    }
+
+    // ========================================================
+    // Step 5: Close device
+    // ========================================================
+
+    CloseHandle(
+        deviceHandle);
+
+    return capability;
 
     // --------------------------------------------------------
     // Step 5:
@@ -813,7 +755,6 @@ SanitizationCapability detectSanitizationCapability(
     capability.nativeSanitizeSupported =
         NativeSanitizeSupport::UNKNOWN;
 
-
     // --------------------------------------------------------
     // Step 6: Close device
     // Close device
@@ -821,7 +762,6 @@ SanitizationCapability detectSanitizationCapability(
 
     CloseHandle(
         deviceHandle);
-
 
     return capability;
 }
