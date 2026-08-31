@@ -16,6 +16,8 @@ add_library(
 
     sanitization/src/SanitizationEngine.cpp
     sanitization/src/SanitizationCapability.cpp
+    sanitization/src/ScsiCapability.cpp
+    sanitization/src/StoragePropertyCapability.cpp
 )
 
 target_include_directories(

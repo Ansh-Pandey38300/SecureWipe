@@ -5,6 +5,8 @@
 #include "../../storage/include/StorageDevice.h"
 #include "../../safety/include/SafetyEngine.h"
 #include "../../safety/include/SafetyResult.h"
+#include "SanitizationMethod.h"
+#include "SanitizationCapability.h"
 
 #include "SanitizationMethod.h"
 #include "SanitizationCapability.h"
