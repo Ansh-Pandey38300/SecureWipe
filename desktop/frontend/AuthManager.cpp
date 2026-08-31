@@ -54,6 +54,7 @@ void AuthManager::login(const QString &email, const QString &password)
 
         QJsonObject responseObject = document.object();
         QString receivedToken = responseObject["token"].toString();
+        token_ = receivedToken;
         QJsonObject userObject = responseObject["user"].toObject();
         QString role = userObject["role"].toString();
         if (role == "WORKSTATION_EMPLOYEE" || role == "ADMIN" || role=="WORKSTATION_HEAD"){
@@ -68,4 +69,15 @@ void AuthManager::login(const QString &email, const QString &password)
 
         reply->deleteLater();
     });
+}
+
+QString AuthManager::token() const
+{
+    return token_;
+}
+
+
+void AuthManager::clearToken()
+{
+    token_.clear();
 }
