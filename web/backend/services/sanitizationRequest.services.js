@@ -1,7 +1,32 @@
-const { randomUUID } = require("crypto");
+// const { randomUUID } = require("crypto");
 const SanitizationRequest = require("../models/SanitizationRequest");
 const WorkstationCenter = require("../models/WorkstationCenter");
 const AppError = require("../utils/AppError");
+const Counter = require("../models/Counter");
+
+
+const generateRequestId = async () => {
+
+    const counter =
+        await Counter.findOneAndUpdate(
+            {
+                name: "sanitizationRequest",
+            },
+            {
+                $inc: {
+                    sequence: 1,
+                },
+            },
+            {
+                new: true,
+                upsert: true,
+            }
+        );
+
+    return `REQ-${String(
+        counter.sequence
+    ).padStart(4, "0")}`;
+};
 
 const createSanitizationRequest =
     async (data, user) => {
@@ -50,11 +75,12 @@ const createSanitizationRequest =
         // CREATE SANITIZATION REQUEST
         // --------------------------------------------------
 
+        const requestId = await generateRequestId();
+
         const request =
             await SanitizationRequest.create({
 
-                requestId:
-                    `REQ-${randomUUID()}`,
+                requestId,
 
                 customer:
                     user._id,
@@ -133,6 +159,14 @@ const getAllSanitizationRequests =
                     "customer",
                     "name email role"
                 )
+                .populate({
+                    path: "workstationCenter",
+                    select: "centerId name location status head",
+                    populate: {
+                        path: "head",
+                        select: "name email phone"
+                    }
+                })
                 .sort({
                     createdAt: -1,
                 });
@@ -198,7 +232,7 @@ const getHeadSanitizationRequests =
         }
 
         if (
-            user.role !=="WORKSTATION_HEAD"
+            user.role !== "WORKSTATION_HEAD"
         ) {
             throw new AppError(
                 "Only workstation heads can view center requests",
@@ -287,7 +321,9 @@ const getHeadSanitizationRequests =
         return requests;
     };
 
-    // ==================================================
+
+
+// ==================================================
 // ADMIN — APPROVE / REJECT SANITIZATION REQUEST
 // ==================================================
 
@@ -455,6 +491,68 @@ const getHeadApprovedSanitizationRequests =
                 .populate(
                     "workstationCenter",
                     "centerId name location status"
+                )
+                .sort({
+                    createdAt: -1
+                });
+
+        return requests;
+    };
+
+
+const getAllHeadSanitizationRequests =
+    async (user) => {
+
+        if (!user) {
+            throw new AppError(
+                "Authentication required",
+                401
+            );
+        }
+
+        if (
+            user.role !==
+            "WORKSTATION_HEAD"
+        ) {
+            throw new AppError(
+                "Only workstation heads can view center requests",
+                403
+            );
+        }
+
+        const center =
+            await WorkstationCenter.findOne({
+                head: user._id
+            });
+
+        if (!center) {
+            throw new AppError(
+                "Workstation head is not assigned to a workstation center",
+                400
+            );
+        }
+
+        const requests =
+            await SanitizationRequest
+                .find({
+                    workstationCenter:
+                        center._id
+                })
+                .populate(
+                    "customer",
+                    "name email"
+                )
+                .populate(
+                    "workstationCenter",
+                    "centerId name location status"
+                )
+                .populate(
+                    "assignedEmployee",
+                    "name email phone role status"
+                )
+                .populate(
+                    "assignedWorkstation",
+                    "workstationId name status connectionStatus"
                 )
                 .sort({
                     createdAt: -1
@@ -644,7 +742,7 @@ const assignSanitizationRequest =
         if (
             !employee.workstationCenter ||
             employee.workstationCenter.toString() !==
-                center._id.toString()
+            center._id.toString()
         ) {
             throw new AppError(
                 "Selected employee does not belong to your workstation center",
@@ -707,7 +805,7 @@ const assignSanitizationRequest =
         if (
             workstation.assignedEmployee &&
             workstation.assignedEmployee.toString() !==
-                employee._id.toString()
+            employee._id.toString()
         ) {
             throw new AppError(
                 "Selected workstation is already assigned to another employee",
@@ -868,7 +966,146 @@ const getMyWorkstationCenter =
         };
     };
 
+const getEmployeeSanitizationRequests =
+    async (user) => {
 
+        // ---------------------------------------------
+        // 1. Authentication
+        // ---------------------------------------------
+
+        if (!user) {
+            throw new AppError(
+                "Authentication required",
+                401
+            );
+        }
+
+
+        // ---------------------------------------------
+        // 2. Employee role
+        // ---------------------------------------------
+
+        if (
+            user.role !==
+            "WORKSTATION_EMPLOYEE"
+        ) {
+            throw new AppError(
+                "Only workstation employees can access assigned requests",
+                403
+            );
+        }
+
+
+        // ---------------------------------------------
+        // 3. Find requests assigned to this employee
+        // ---------------------------------------------
+
+        const requests =
+            await SanitizationRequest
+                .find({
+                    assignedEmployee: user._id
+                })
+                .populate(
+                    "workstationCenter",
+                    "centerId name location status"
+                )
+                .populate(
+                    "assignedEmployee",
+                    "name email role status"
+                )
+                .populate(
+                    "assignedWorkstation",
+                    "workstationId name status connectionStatus hostname operatingSystem"
+                )
+                .sort({
+                    assignedAt: -1
+                });
+
+
+        return requests;
+    };
+
+const updateEmployeeSanitizationStatus =
+    async (requestId, newStatus, user) => {
+
+        if (!user) {
+            throw new AppError(
+                "Authentication required",
+                401
+            );
+        }
+
+        if (
+            user.role !==
+            "WORKSTATION_EMPLOYEE"
+        ) {
+            throw new AppError(
+                "Only workstation employees can update request status",
+                403
+            );
+        }
+
+        const request =
+            await SanitizationRequest.findOne({
+                requestId
+            });
+
+        if (!request) {
+            throw new AppError(
+                "Sanitization request not found",
+                404
+            );
+        }
+
+        // Employee can only update
+        // requests assigned to them.
+        if (
+            !request.assignedEmployee ||
+            request.assignedEmployee.toString() !==
+            user._id.toString()
+        ) {
+            throw new AppError(
+                "This request is not assigned to you",
+                403
+            );
+        }
+
+        const allowedTransitions = {
+            ASSIGNED: ["IN_PROGRESS"],
+            IN_PROGRESS: ["VERIFYING"],
+            VERIFYING: ["COMPLETED", "FAILED"],
+        };
+
+        const allowedNextStatuses =
+            allowedTransitions[request.status];
+
+        if (
+            !allowedNextStatuses ||
+            !allowedNextStatuses.includes(newStatus)
+        ) {
+            throw new AppError(
+                `Invalid status transition: ${request.status} → ${newStatus}`,
+                400
+            );
+        }
+
+        request.status = newStatus;
+
+        if (newStatus === "IN_PROGRESS") {
+            request.startedAt = new Date();
+        }
+
+        if (
+            newStatus === "COMPLETED" ||
+            newStatus === "FAILED"
+        ) {
+            request.completedAt = new Date();
+        }
+
+        await request.save();
+
+        return request;
+    };
 
 module.exports = {
     createSanitizationRequest,
@@ -879,4 +1116,7 @@ module.exports = {
     updateSanitizationRequestStatus,
     assignSanitizationRequest,
     getMyWorkstationCenter,
+    getAllHeadSanitizationRequests,
+    getEmployeeSanitizationRequests,
+    updateEmployeeSanitizationStatus,
 };

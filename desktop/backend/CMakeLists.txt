@@ -15,6 +15,9 @@ add_library(
     safety/src/SafetyEngine.cpp
 
     sanitization/src/SanitizationEngine.cpp
+    sanitization/src/SanitizationCapability.cpp
+    sanitization/src/ScsiCapability.cpp
+    sanitization/src/StoragePropertyCapability.cpp
 )
 
 target_include_directories(
@@ -71,6 +74,11 @@ add_executable(
     tests/SanitizationEngineTest.cpp
 )
 
+add_executable(
+   SanitizationCapabilityTest
+    tests/SanitizationCapabilityTest.cpp
+)
+
 set(STORAGE_TESTS
     StorageDeviceTest
     StorageManagerTest
@@ -79,6 +87,7 @@ set(STORAGE_TESTS
     WindowsBootCheckerTest
     SafetyEngineTest
     SanitizationEngineTest
+    SanitizationCapabilityTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)

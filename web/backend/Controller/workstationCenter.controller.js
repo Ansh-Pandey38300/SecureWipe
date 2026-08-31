@@ -3,7 +3,8 @@ const { createWorkstationCenter,
     getWorkstationCenterById,
     assignEmployees,
     getActiveWorkstationCenters,
-    getMyWorkstationCenter 
+    getMyWorkstationCenter,
+    getEligibleEmployees
     } = require("../services/workstationCenter.services");
 
 module.exports.createWorkStationCenter = asyncHandler(async (req, res, next) => {
@@ -79,3 +80,21 @@ module.exports.getActiveWorkstationCenters =
             });
         }
     );
+
+module.exports.getEligibleEmployees = asyncHandler(
+    async (req, res) => {
+
+        const { id } = req.params;
+
+        const employees = await getEligibleEmployees(
+            id,
+            req.user
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Eligible employees fetched successfully",
+            data: employees
+        });
+    }
+);

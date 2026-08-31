@@ -2,6 +2,8 @@
 
 Release build compiles and runs. Portable Windows package (via windeployqt) was verified to include the required Qt runtime dependencies. No functional/backend testing yet since there's nothing to connect to.
 
+27 Aug: build passes, login flow works, dashboard/devices navigation works, selecting a device and opening Device Details works, back-navigation works, logout (local page switch only, no JWT/session logout yet) works. All PASS.
+
 Evidence:Screenshots
 Screenshot:SS-DESKTOP-UI-01-dash01.png
 SS-DESKTOP-UI-01-dash2.png

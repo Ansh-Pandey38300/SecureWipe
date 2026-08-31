@@ -5,10 +5,14 @@
 #include "../../storage/include/StorageDevice.h"
 #include "../../safety/include/SafetyEngine.h"
 #include "../../safety/include/SafetyResult.h"
+#include "SanitizationMethod.h"
+#include "SanitizationCapability.h"
 
 class SanitizationEngine
 {
 private:
+    SanitizationMethod selectMethod(const SanitizationCapability &capability) const;
+
     bool performOverwrite(HANDLE deviceHandle, std::uint64_t totalBytes);
 
 public:

@@ -173,6 +173,14 @@ function AdminDashboard() {
                                     </th>
 
                                     <th className="px-3 py-3">
+                                        Workstation Centre
+                                    </th>
+
+                                    <th className="px-3 py-3">
+                                        Centre Head
+                                    </th>
+
+                                    <th className="px-3 py-3">
                                         Device
                                     </th>
 
@@ -228,6 +236,43 @@ function AdminDashboard() {
                                                 </div>
                                             </td>
 
+                                            <td className="px-3 py-4">
+                                                <div>
+                                                    <p className="font-medium text-slate-900">
+                                                        {
+                                                            request.workstationCenter?.name ||
+                                                            "N/A"
+                                                        }
+                                                    </p>
+
+                                                    <p className="text-xs text-slate-500">
+                                                        Centre ID:{" "}
+                                                        {
+                                                            request.workstationCenter?.centerId ||
+                                                            "N/A"
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </td>
+
+                                            <td className="px-3 py-4">
+                                                <div>
+                                                    <p className="font-medium text-slate-900">
+                                                        {
+                                                            request.workstationCenter?.head?.name ||
+                                                            "Not assigned"
+                                                        }
+                                                    </p>
+
+                                                    <p className="text-xs text-slate-500">
+                                                        {
+                                                            request.workstationCenter?.head?.email ||
+                                                            ""
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </td>
+
                                             <td className="px-3 py-4 text-slate-700">
                                                 {
                                                     request.deviceType
@@ -257,18 +302,18 @@ function AdminDashboard() {
                                             <td className="px-3 py-4">
                                                 <span
                                                     className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${request.status ===
-                                                            "PENDING"
-                                                            ? "bg-amber-50 text-amber-700"
+                                                        "PENDING"
+                                                        ? "bg-amber-50 text-amber-700"
+                                                        : request.status ===
+                                                            "APPROVED"
+                                                            ? "bg-blue-50 text-blue-700"
                                                             : request.status ===
-                                                                "APPROVED"
-                                                                ? "bg-blue-50 text-blue-700"
+                                                                "COMPLETED"
+                                                                ? "bg-green-50 text-green-700"
                                                                 : request.status ===
-                                                                    "COMPLETED"
-                                                                    ? "bg-green-50 text-green-700"
-                                                                    : request.status ===
-                                                                        "REJECTED"
-                                                                        ? "bg-red-50 text-red-700"
-                                                                        : "bg-slate-100 text-slate-700"
+                                                                    "REJECTED"
+                                                                    ? "bg-red-50 text-red-700"
+                                                                    : "bg-slate-100 text-slate-700"
                                                         }`}
                                                 >
                                                     {

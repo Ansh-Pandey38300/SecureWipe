@@ -3,6 +3,31 @@ const User = require("../models/User");
 const Workstation = require("../models/WorkStation");
 const WorkstationCenter = require("../models/WorkstationCenter");
 const AppError = require("../utils/AppError");
+const Counter = require("../models/Counter");
+
+
+const generateCenterId = async () => {
+
+    const counter =
+        await Counter.findOneAndUpdate(
+            {
+                name: "workstationCenter"
+            },
+            {
+                $inc: {
+                    sequence: 1
+                }
+            },
+            {
+                new: true,
+                upsert: true
+            }
+        );
+
+    return `CTR-${String(
+        counter.sequence
+    ).padStart(4, "0")}`;
+};
 
 const createWorkstationCenter = async (data) => {
     const head = await User.findById(data.head);
@@ -38,9 +63,14 @@ const createWorkstationCenter = async (data) => {
             409
         );
     }
+    const centerId =
+        await generateCenterId();
 
     const workstationCenter =
-        await WorkstationCenter.create(data);
+        await WorkstationCenter.create({
+            ...data,
+            centerId
+        });
 
     return workstationCenter;
 };
@@ -283,12 +313,12 @@ const getActiveWorkstationCenters =
             await WorkstationCenter.find({
                 status: "ACTIVE"
             })
-            .select(
-                "centerId name location status"
-            )
-            .sort({
-                name: 1
-            });
+                .select(
+                    "centerId name location status"
+                )
+                .sort({
+                    name: 1
+                });
 
         return centers;
     };
@@ -327,14 +357,14 @@ const getMyWorkstationCenter = async (user) => {
         await WorkstationCenter.findOne({
             head: user._id
         })
-        .populate(
-            "head",
-            "name email"
-        )
-        .populate(
-            "employees",
-            "name email role status workstationCenter"
-        );
+            .populate(
+                "head",
+                "name email"
+            )
+            .populate(
+                "employees",
+                "name email role status workstationCenter"
+            );
 
 
     // ---------------------------------------------
@@ -357,16 +387,16 @@ const getMyWorkstationCenter = async (user) => {
         await Workstation.find({
             workstationCenter: center._id
         })
-        .populate(
-            "assignedEmployee",
-            "name email role status"
-        )
-        .select(
-            "workstationId name status connectionStatus hostname operatingSystem assignedEmployee enrolledAt"
-        )
-        .sort({
-            name: 1
-        });
+            .populate(
+                "assignedEmployee",
+                "name email role status"
+            )
+            .select(
+                "workstationId name status connectionStatus hostname operatingSystem assignedEmployee enrolledAt"
+            )
+            .sort({
+                name: 1
+            });
 
 
     // ---------------------------------------------
@@ -389,10 +419,83 @@ const getMyWorkstationCenter = async (user) => {
         workstations: workstations
     };
 };
+
+const getEligibleEmployees = async (
+    centerId,
+    currentUser
+) => {
+
+    // 1. Authentication check
+    if (!currentUser) {
+        throw new AppError(
+            "Authentication required",
+            401
+        );
+    }
+
+    // 2. Find workstation center
+    const center = await WorkstationCenter.findOne({
+        centerId
+    });
+
+    if (!center) {
+        throw new AppError(
+            "Workstation center not found",
+            404
+        );
+    }
+
+    // 3. Workstation Head can only view
+    //    eligible employees for their own center
+    if (
+        currentUser.role === "WORKSTATION_HEAD" &&
+        (
+            !center.head ||
+            center.head.toString() !==
+            currentUser._id.toString()
+        )
+    ) {
+        throw new AppError(
+            "You can only access employees from your own center",
+            403
+        );
+    }
+
+    // 4. Only ADMIN and WORKSTATION_HEAD
+    //    should reach this service
+    if (
+        currentUser.role !== "ADMIN" &&
+        currentUser.role !== "WORKSTATION_HEAD"
+    ) {
+        throw new AppError(
+            "You are not authorized to view eligible employees",
+            403
+        );
+    }
+
+    // 5. Find employees who can actually
+    //    be assigned to this center
+    const employees = await User.find({
+        role: "WORKSTATION_EMPLOYEE",
+        status: "ACTIVE",
+        workstationCenter: null
+    })
+        .select(
+            "_id name email role status workstationCenter"
+        )
+        .sort({
+            name: 1
+        });
+
+    return employees;
+};
+
 module.exports = {
     createWorkstationCenter,
     getWorkstationCenterById,
     assignEmployees,
     getActiveWorkstationCenters,
-    getMyWorkstationCenter
+    getMyWorkstationCenter,
+    getEligibleEmployees
 };
+
