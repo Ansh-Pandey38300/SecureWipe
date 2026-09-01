@@ -10,7 +10,6 @@ add_library(
 
     safety/src/BootInfo.cpp
     safety/src/WindowsBootChecker.cpp
-
     safety/src/WindowsStorageUtils.cpp
     safety/src/SafetyEngine.cpp
 
@@ -18,6 +17,9 @@ add_library(
     sanitization/src/SanitizationCapability.cpp
     sanitization/src/ScsiCapability.cpp
     sanitization/src/StoragePropertyCapability.cpp
+    sanitization/src/NvmeCapability.cpp
+    sanitization/src/NvmeSanitizer.cpp
+
 )
 
 target_include_directories(
@@ -79,6 +81,11 @@ add_executable(
     tests/SanitizationCapabilityTest.cpp
 )
 
+add_executable(
+   NvmeCapabilityTest
+   tests/NvmeCapabilityTest.cpp
+)
+
 set(STORAGE_TESTS
     StorageDeviceTest
     StorageManagerTest
@@ -88,6 +95,7 @@ set(STORAGE_TESTS
     SafetyEngineTest
     SanitizationEngineTest
     SanitizationCapabilityTest
+    NvmeCapabilityTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)

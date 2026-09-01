@@ -19,6 +19,11 @@ public:
         QWidget *parent = nullptr
     );
 
+    void updateSafetyStatus(
+    bool passed,
+    const QString &message = QString()
+    );
+
 signals:
     void backRequested();
     void refreshRequested();
@@ -40,8 +45,17 @@ private:
     QLabel *classificationStatusLabel_;
 
     QLabel *safetyStatusLabel_;
+    QLabel *safetyDescriptionLabel_;
 
     void setupUi();
+
+    void setSafetyPending();
+
+    void setSafetyPassed();
+
+    void setSafetyFailed(
+        const QString &message
+    );
 
     QWidget *createDeviceHeader();
     QWidget *createClassificationCard(
