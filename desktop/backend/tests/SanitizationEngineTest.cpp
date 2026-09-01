@@ -75,9 +75,9 @@ int main()
             continue;
         }
 
-        // ====================================================
+         
         // STEP 1: Set the device selected by the user
-        // ====================================================
+         
 
         std::cout
             << "\n[1] Setting expected target...\n";
@@ -87,9 +87,9 @@ int main()
         std::cout
             << "Expected target set successfully.\n";
 
-        // ====================================================
+         
         // STEP 2: Run Safety Engine
-        // ====================================================
+         
 
         std::cout
             << "\n[2] Running Safety Engine...\n";
@@ -107,9 +107,9 @@ int main()
             << safetyResult.summary
             << '\n';
 
-        // ====================================================
+         
         // Display individual safety checks
-        // ====================================================
+         
 
         std::cout
             << "\nSafety Checks\n"
@@ -129,9 +129,9 @@ int main()
                 << '\n';
         }
 
-        // ====================================================
+         
         // STEP 3: Stop if safety checks fail
-        // ====================================================
+         
 
         if (!safetyResult.isOverallSafe)
         {
@@ -144,9 +144,9 @@ int main()
         std::cout
             << "\nSafety validation PASSED.\n";
 
-        // ====================================================
+         
         // STEP 4: Start Sanitization Engine
-        // ====================================================
+         
 
         std::cout
             << "\n[3] Starting Sanitization Engine...\n";
@@ -156,9 +156,9 @@ int main()
                 device,
                 safetyResult);
 
-        // ====================================================
+         
         // STEP 5: Final result
-        // ====================================================
+         
 
         std::cout
             << "\n========================================\n"

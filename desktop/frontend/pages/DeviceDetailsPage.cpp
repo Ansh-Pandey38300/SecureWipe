@@ -78,9 +78,9 @@ DeviceDetailsPage::DeviceDetailsPage(
 
 
 /*
- * =============================================================
+ *  
  * Main UI
- * =============================================================
+ *  
  */
 
 void DeviceDetailsPage::setupUi()
@@ -334,9 +334,9 @@ void DeviceDetailsPage::setupUi()
 
 
 /*
- * =============================================================
+ *  
  * Device Header
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createDeviceHeader()
@@ -686,9 +686,9 @@ QWidget *DeviceDetailsPage::createDeviceHeader()
 
 
 /*
- * =============================================================
+ *  
  * Classification Card
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createClassificationCard(
@@ -824,9 +824,9 @@ QWidget *DeviceDetailsPage::createClassificationCard(
 
 
 /*
- * =============================================================
+ *  
  * System Status Card
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createSystemStatusCard(
@@ -956,9 +956,9 @@ QWidget *DeviceDetailsPage::createSystemStatusCard(
 
 
 /*
- * =============================================================
+ *  
  * Safety Card
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createSafetyCard()
@@ -1087,9 +1087,9 @@ QWidget *DeviceDetailsPage::createSafetyCard()
 
 
 /*
- * =============================================================
+ *  
  * Helpers
- * =============================================================
+ *  
  */
 
 QFrame *DeviceDetailsPage::createCard()
@@ -1165,9 +1165,9 @@ QLabel *DeviceDetailsPage::createValueLabel(
 
 
 /*
- * =============================================================
+ *  
  * Formatting
- * =============================================================
+ *  
  */
 
 QString DeviceDetailsPage::formatCapacity(

@@ -11,9 +11,9 @@
 #include <string>
 #include <vector>
 
-// ============================================================
+ 
 // Convert fixed-width NVMe character fields into std::string
-// ============================================================
+ 
 
 static std::string decodeNvmeString(
     const UCHAR *buffer,
@@ -44,14 +44,14 @@ static std::string decodeNvmeString(
     return result;
 }
 
-// ============================================================
+ 
 // NVMe Identify Controller
 //
 // NON-DESTRUCTIVE.
 //
 // This only asks Windows/NVMe controller for information.
 // No sanitize command is sent.
-// ============================================================
+ 
 
 bool detectNvmeCapability(HANDLE deviceHandle,SanitizationCapability &capability)
 {
