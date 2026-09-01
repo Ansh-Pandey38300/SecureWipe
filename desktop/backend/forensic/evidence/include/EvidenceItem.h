@@ -14,9 +14,9 @@ enum class ForensicConfidence
 
 struct EvidenceItem
 {
-    // ========================================================
+     
     // Artifact Identification
-    // ========================================================
+     
 
     std::string artifactId;
 
@@ -31,9 +31,9 @@ struct EvidenceItem
     std::uint64_t size = 0;
 
 
-    // ========================================================
+     
     // Recovered File Information
-    // ========================================================
+     
 
     std::string fileName;
 
@@ -45,9 +45,9 @@ struct EvidenceItem
     std::string recoveredPath;
 
 
-    // ========================================================
+     
     // Validation Results
-    // ========================================================
+     
 
     bool headerValid = false;
 
@@ -60,9 +60,9 @@ struct EvidenceItem
     bool decodable = false;
 
 
-    // ========================================================
+     
     // Confidence
-    // ========================================================
+     
 
     int confidenceScore = 0;
 
@@ -78,27 +78,27 @@ struct EvidenceItem
     std::vector<std::string> confidenceReasons;
 
 
-    // ========================================================
+     
     // Integrity
-    // ========================================================
+     
 
     // SHA-256 or another cryptographic hash of the
     // recovered artifact.
     std::string sha256;
 
 
-    // ========================================================
+     
     // Status
-    // ========================================================
+     
 
     bool recovered = false;
 
     bool validated = false;
 
 
-    // ========================================================
+     
     // Helper
-    // ========================================================
+     
 
     std::string getConfidenceString() const
     {

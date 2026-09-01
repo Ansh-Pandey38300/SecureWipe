@@ -20,6 +20,8 @@ add_library(
     sanitization/src/NvmeCapability.cpp
     sanitization/src/NvmeSanitizer.cpp
 
+    forensic/evidence/src/EvidenceCollector.cpp
+
 )
 
 target_include_directories(
@@ -30,6 +32,7 @@ target_include_directories(
     classification/include
     safety/include
     sanitization/include
+    forensic/evidence/include
 )
 
 if(WIN32)
@@ -86,6 +89,11 @@ add_executable(
    tests/NvmeCapabilityTest.cpp
 )
 
+add_executable(
+   EvidenceCollectorTest
+   tests/forensic/evidence/EvidenceCollectorTest.cpp
+)
+
 set(STORAGE_TESTS
     StorageDeviceTest
     StorageManagerTest
@@ -96,6 +104,7 @@ set(STORAGE_TESTS
     SanitizationEngineTest
     SanitizationCapabilityTest
     NvmeCapabilityTest
+    EvidenceCollectorTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)

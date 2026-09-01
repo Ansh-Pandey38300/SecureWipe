@@ -14,9 +14,9 @@
 #pragma comment(lib, "setupapi.lib")
 
 
-// ============================================================
+ 
 // Helper: Convert std::wstring -> std::string
-// ============================================================
+ 
 
 static std::string wideToString(const std::wstring& value)
 {
@@ -67,9 +67,9 @@ static std::string wideToString(const std::wstring& value)
 }
 
 
-// ============================================================
+ 
 // Helper: Convert bus type to readable text
-// ============================================================
+ 
 
 static std::string getBusTypeName(STORAGE_BUS_TYPE busType)
 {
@@ -138,9 +138,9 @@ static std::string getBusTypeName(STORAGE_BUS_TYPE busType)
 }
 
 
-// ============================================================
+ 
 // Helper: Get PhysicalDrive number
-// ============================================================
+ 
 
 static bool getPhysicalDriveNumber(
     const std::wstring& deviceInterfacePath,
@@ -189,9 +189,9 @@ static bool getPhysicalDriveNumber(
 }
 
 
-// ============================================================
+ 
 // Helper: Get model, serial number, bus type and removable state
-// ============================================================
+ 
 
 static bool getStorageDescriptor(
     const std::wstring& physicalDrivePath,
@@ -343,9 +343,9 @@ static bool getStorageDescriptor(
 }
 
 
-// ============================================================
+ 
 // Helper: Get seek penalty
-// ============================================================
+ 
 
 static bool getSeekPenalty(
     const std::wstring& physicalDrivePath,
@@ -403,9 +403,9 @@ static bool getSeekPenalty(
 }
 
 
-// ============================================================
+ 
 // Helper: Try to get physical disk capacity
-// ============================================================
+ 
 
 static bool getPhysicalDiskCapacity(
     const std::wstring& physicalDrivePath,
@@ -537,10 +537,10 @@ static bool getPhysicalDiskCapacity(
 }
 
 
-// ============================================================
+ 
 // Helper: Get capacity from a mounted volume belonging
 //         to the specified physical disk
-// ============================================================
+ 
 
 static bool getMountedVolumeCapacity(
     DWORD targetPhysicalDiskNumber,
@@ -746,9 +746,9 @@ static bool getMountedVolumeCapacity(
 }
 
 
-// ============================================================
+ 
 // Helper: Get disk capacity with fallbacks
-// ============================================================
+ 
 
 static bool getDiskCapacity(
     const std::wstring& physicalDrivePath,
@@ -799,9 +799,9 @@ static bool getDiskCapacity(
 }
 
 
-// ============================================================
+ 
 // Helper: Find the PhysicalDrive containing Windows
-// ============================================================
+ 
 
 static bool getSystemDiskNumber(
     DWORD& systemDiskNumber)
@@ -898,9 +898,9 @@ static bool getSystemDiskNumber(
 }
 
 
-// ============================================================
+ 
 // Main discovery function
-// ============================================================
+ 
 
 std::vector<StorageDevice>
 WindowsStorageDiscovery::discover()
@@ -908,10 +908,10 @@ WindowsStorageDiscovery::discover()
     std::vector<StorageDevice> devices;
 
 
-    // ========================================================
+     
     // STEP 1
     // Directly ask Windows for PRESENT DISK INTERFACES
-    // ========================================================
+     
 
     HDEVINFO deviceInfoSet =
         SetupDiGetClassDevsW(
@@ -934,10 +934,10 @@ WindowsStorageDiscovery::discover()
     }
 
 
-    // ========================================================
+     
     // STEP 2
     // Find the physical disk containing Windows
-    // ========================================================
+     
 
     DWORD systemDiskNumber = 0;
 
@@ -960,10 +960,10 @@ WindowsStorageDiscovery::discover()
     }
 
 
-    // ========================================================
+     
     // STEP 3
     // Enumerate disk interfaces directly
-    // ========================================================
+     
 
     for (DWORD index = 0; ; ++index)
     {
@@ -991,10 +991,10 @@ WindowsStorageDiscovery::discover()
             << "\n";
 
 
-        // ====================================================
+         
         // STEP 4
         // Find required buffer size
-        // ====================================================
+         
 
         DWORD requiredSize = 0;
 
@@ -1017,19 +1017,19 @@ WindowsStorageDiscovery::discover()
         }
 
 
-        // ====================================================
+         
         // STEP 5
         // Allocate buffer
-        // ====================================================
+         
 
         std::vector<BYTE>
             buffer(requiredSize);
 
 
-        // ====================================================
+         
         // STEP 6
         // Treat buffer as interface detail structure
-        // ====================================================
+         
 
         auto detailData =
             reinterpret_cast<
@@ -1045,10 +1045,10 @@ WindowsStorageDiscovery::discover()
             );
 
 
-        // ====================================================
+         
         // STEP 7
         // Get Device Interface Path
-        // ====================================================
+         
 
         if (!SetupDiGetDeviceInterfaceDetailW(
                 deviceInfoSet,
@@ -1075,10 +1075,10 @@ WindowsStorageDiscovery::discover()
             << L"\n";
 
 
-        // ====================================================
+         
         // STEP 8
         // Get PhysicalDrive number
-        // ====================================================
+         
 
         DWORD physicalDiskNumber = 0;
 
@@ -1094,10 +1094,10 @@ WindowsStorageDiscovery::discover()
         }
 
 
-        // ====================================================
+         
         // STEP 9
         // Build PhysicalDrive path
-        // ====================================================
+         
 
         std::wstring physicalDrivePath =
             L"\\\\.\\PhysicalDrive" +
@@ -1112,10 +1112,10 @@ WindowsStorageDiscovery::discover()
             << L"\n";
 
 
-        // ====================================================
+         
         // STEP 10
         // Get model, serial, interface and removable state
-        // ====================================================
+         
 
         std::string model =
             "Unknown";
@@ -1147,10 +1147,10 @@ WindowsStorageDiscovery::discover()
         }
 
 
-        // ====================================================
+         
         // STEP 11
         // Get capacity
-        // ====================================================
+         
 
         std::uint64_t capacityBytes =
             0;
@@ -1171,10 +1171,10 @@ WindowsStorageDiscovery::discover()
         }
 
 
-        // ====================================================
+         
         // STEP 12
         // Get seek penalty
-        // ====================================================
+         
 
         bool hasSeekPenalty =
             false;
@@ -1194,10 +1194,10 @@ WindowsStorageDiscovery::discover()
         }
 
 
-        // ====================================================
+         
         // STEP 13
         // Check whether this is the system disk
-        // ====================================================
+         
 
         bool isSystemDisk =
             hasSystemDiskNumber &&
@@ -1205,10 +1205,10 @@ WindowsStorageDiscovery::discover()
                 systemDiskNumber;
 
 
-        // ====================================================
+         
         // STEP 14
         // Device ID
-        // ====================================================
+         
 
         std::string deviceId =
             wideToString(
@@ -1216,10 +1216,10 @@ WindowsStorageDiscovery::discover()
             );
 
 
-        // ====================================================
+         
         // STEP 15
         // Create StorageDevice
-        // ====================================================
+         
 
         StorageDevice device(
             deviceId,
@@ -1233,20 +1233,20 @@ WindowsStorageDiscovery::discover()
         );
 
 
-        // ====================================================
+         
         // STEP 16
         // Add to result
-        // ====================================================
+         
 
         devices.push_back(
             std::move(device)
         );
 
 
-        // ====================================================
+         
         // STEP 17
         // Temporary output
-        // ====================================================
+         
 
         std::cout
             << "Model          : "
@@ -1299,20 +1299,20 @@ WindowsStorageDiscovery::discover()
     }
 
 
-    // ========================================================
+     
     // STEP 18
     // Cleanup
-    // ========================================================
+     
 
     SetupDiDestroyDeviceInfoList(
         deviceInfoSet
     );
 
 
-    // ========================================================
+     
     // STEP 19
     // Return discovered devices
-    // ========================================================
+     
 
     return devices;
 }
