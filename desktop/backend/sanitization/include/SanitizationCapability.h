@@ -11,8 +11,6 @@ enum class NativeSanitizeSupport
 
 struct SanitizationCapability
 {
-    // USB Supported
-
     bool isUsbDevice = false;
 
     bool scsiPathAvailable = false;
@@ -22,7 +20,9 @@ struct SanitizationCapability
     NativeSanitizeSupport nativeSanitizeSupported =
         NativeSanitizeSupport::UNKNOWN;
 
-    // NVME Supported
+    // --------------------------------------------------------
+    // NVMe sanitization capabilities
+    // --------------------------------------------------------
 
     bool nvmeIdentifyAvailable = false;
 

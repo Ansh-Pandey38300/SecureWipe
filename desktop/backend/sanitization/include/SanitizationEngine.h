@@ -8,9 +8,6 @@
 #include "SanitizationMethod.h"
 #include "SanitizationCapability.h"
 
-#include "SanitizationMethod.h"
-#include "SanitizationCapability.h"
-
 class SanitizationEngine
 {
 private:
