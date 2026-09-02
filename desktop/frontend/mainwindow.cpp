@@ -39,6 +39,45 @@ MainWindow::MainWindow(QWidget *parent)
     , refreshDevicesButton(nullptr)
 {
     ui->setupUi(this);
+    ui->recentJobsTable->setHorizontalHeaderLabels({
+    QStringLiteral("Request ID"),
+    QStringLiteral("Device"),
+    QStringLiteral("Method"),
+    QStringLiteral("Status")
+    });
+    ui->recentJobsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->recentJobsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->recentJobsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    connect(
+    ui->recentJobsTable,
+    &QTableWidget::itemSelectionChanged,
+    this,
+    [this]()
+    {
+        const int row = ui->recentJobsTable->currentRow();
+
+        if (row < 0)
+        {
+            selectedRequestId.clear();
+            selectedRequestDeviceType.clear();
+            selectedRequestMethod.clear();
+            return;
+        }
+
+        selectedRequestId = ui->recentJobsTable->item(row, 0)
+                                ? ui->recentJobsTable->item(row, 0)->text()
+                                : QString();
+
+        selectedRequestDeviceType = ui->recentJobsTable->item(row, 1)
+                                        ? ui->recentJobsTable->item(row, 1)->text()
+                                        : QString();
+
+        selectedRequestMethod = ui->recentJobsTable->item(row, 2)
+                                   ? ui->recentJobsTable->item(row, 2)->text()
+                                   : QString();
+    }
+);
 
     /*
      * The .ui file contains old dark-theme styles.
@@ -220,20 +259,36 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     connect(
-        ui->wipeNavButton,
-        &QPushButton::clicked,
-        this,
-        [this]()
-        {
-            ui->contentStack->setCurrentWidget(
-                ui->wipePage
-            );
+    ui->wipeNavButton,
+    &QPushButton::clicked,
+    this,
+    [this]()
+    {
+        ui->contentStack->setCurrentWidget(
+            ui->wipePage
+        );
 
-            setActiveNavButton(
-                ui->wipeNavButton
+        setActiveNavButton(
+            ui->wipeNavButton
+        );
+
+        if (selectedRequestId.isEmpty())
+        {
+            ui->statusLabel->setText(
+                QStringLiteral("Select an assigned request from Dashboard before sanitization.")
             );
         }
-    );
+        else
+        {
+            ui->statusLabel->setText(
+                QStringLiteral("Request: %1 | Device: %2 | Method: %3")
+                    .arg(selectedRequestId)
+                    .arg(selectedRequestDeviceType)
+                    .arg(selectedRequestMethod)
+            );
+        }
+    }
+);
 
 
     connect(
@@ -545,35 +600,19 @@ ui->inProgressValue->setText(
             )
 );
 
-const bool methodSelected =
-    ui->methodComboBox->currentIndex() >= 0;
+    const bool requestSelected =
+        !selectedRequestId.isEmpty();
 
-ui->startWipeButton->setEnabled(
-    methodSelected
-);
+    const bool deviceSelected =
+        ui->deviceComboBox->currentIndex() >= 0;
+
+    ui->startWipeButton->setEnabled(
+        requestSelected && deviceSelected
+    );
         }
     );
     ui->startWipeButton->setEnabled(false);
 
-    connect(
-    ui->methodComboBox,
-    QOverload<int>::of(
-        &QComboBox::currentIndexChanged
-    ),
-    this,
-    [this](int index)
-    {
-        const bool deviceSelected =
-            ui->deviceComboBox->currentIndex() >= 0;
-
-        const bool methodSelected =
-            index >= 0;
-
-        ui->startWipeButton->setEnabled(
-            deviceSelected && methodSelected
-        );
-    }
-);
 
     /*
      * ---------------------------------------------------------
@@ -1095,7 +1134,6 @@ void MainWindow::showDevicesPage()
     ui->contentStack->setCurrentWidget(
         ui->devicesPage
     );
-
     setActiveNavButton(
         ui->devicesNavButton
     );
