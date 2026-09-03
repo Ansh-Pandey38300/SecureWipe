@@ -1,4 +1,7 @@
 #include "EvidenceCollector.h"
+#include "EvidenceValidator.h"
+#include "HashCalculator.h"
+#include "ConfidenceScorer.h"
 #include <Windows.h>
 #include <fstream>
 #include <iostream>
@@ -84,6 +87,12 @@ bool EvidenceCollector::carveArtifacts(const std::vector<std::uint8_t> &buffer, 
 std::vector<EvidenceItem> EvidenceCollector::collect(const std::string &source)
 {
     std::vector<EvidenceItem> evidence;
+
+    EvidenceValidator validator;
+
+    HashCalculator hashCalculator;
+
+    ConfidenceScorer confidenceScorer;
 
     HANDLE deviceHandle = CreateFileA(
         source.c_str(),
@@ -265,11 +274,52 @@ std::vector<EvidenceItem> EvidenceCollector::collect(const std::string &source)
                     item.fileType = "JPEG";
                     item.recoveredPath = currentOutputPath;
                     item.recovered = true;
+                    item.headerValid = validator.validateHeader(item.recoveredPath);
+                    item.footerValid = validator.validateFooter(item.recoveredPath);
+                    item.sizeValid = validator.validateSize(item);
+                    item.structureValid = validator.validateStructure(item.recoveredPath);
 
-                    evidence.push_back(item);
+                    item.decodable = validator.validateDecodability(item.recoveredPath);
+                    item.validated = item.headerValid && item.footerValid && item.sizeValid && item.structureValid && item.decodable;
 
-                    std::cout << "Evidence item added: "
-                              << item.artifactId << '\n';
+                    std::cout << "Validation results:\n";
+                    std::cout << "Header valid : " << (item.headerValid ? "YES" : "NO") << '\n';
+
+                    std::cout << "Footer valid : " << (item.footerValid ? "YES" : "NO") << '\n';
+
+                    std::cout << "Size valid   : " << (item.sizeValid ? "YES" : "NO") << '\n';
+
+                    std::cout << "Structure valid : " << (item.structureValid ? "YES" : "NO") << '\n';
+
+                    std::cout << "Validated    : " << (item.validated ? "YES" : "NO") << '\n';
+
+                    std::cout << "Decodable: " << item.decodable << std::endl;
+
+                    if (item.validated)
+                    {
+                        if (hashCalculator.calculateSha256(item.recoveredPath, item.sha256))
+                        {
+                            confidenceScorer.calculate(item);
+
+                            std::cout << "Confidence Score: "
+                                      << item.confidenceScore << '\n';
+
+                            std::cout << "Confidence: "
+                                      << item.getConfidenceString() << '\n';
+
+                            std::cout << "Candidate Accepted: "
+                                      << item.artifactId << '\n';
+
+                            evidence.push_back(item);
+                        }
+                    }
+                    else
+                    {
+                        std::cout << "Candidate rejected: "
+                                  << item.artifactId << '\n';
+                    }
+
+                    std::cout << "SHA-256: " << item.sha256 << std::endl;
 
                     jpegInProgress = false;
                     scanOffset = 1;
@@ -315,11 +365,51 @@ std::vector<EvidenceItem> EvidenceCollector::collect(const std::string &source)
                         item.fileType = "JPEG";
                         item.recoveredPath = currentOutputPath;
                         item.recovered = true;
+                        item.headerValid = validator.validateHeader(item.recoveredPath);
+                        item.footerValid = validator.validateFooter(item.recoveredPath);
+                        item.sizeValid = validator.validateSize(item);
+                        item.structureValid = validator.validateStructure(item.recoveredPath);
+                        item.decodable = validator.validateDecodability(item.recoveredPath);
+                        item.validated = item.headerValid && item.footerValid && item.sizeValid && item.structureValid && item.decodable;
 
-                        evidence.push_back(item);
+                        std::cout << "Validation results:\n";
+                        std::cout << "Header valid : " << (item.headerValid ? "YES" : "NO") << '\n';
 
-                        std::cout << "Evidence item added: "
-                                  << item.artifactId << '\n';
+                        std::cout << "Footer valid : " << (item.footerValid ? "YES" : "NO") << '\n';
+
+                        std::cout << "Size valid   : " << (item.sizeValid ? "YES" : "NO") << '\n';
+
+                        std::cout << "Structure valid : " << (item.structureValid ? "YES" : "NO") << '\n';
+
+                        std::cout << "Validated    : " << (item.validated ? "YES" : "NO") << '\n';
+
+                        std::cout << "Decodable: " << item.decodable << std::endl;
+
+                        if (item.validated)
+                        {
+                            if (hashCalculator.calculateSha256(item.recoveredPath, item.sha256))
+                            {
+                                confidenceScorer.calculate(item);
+
+                                std::cout << "Confidence Score: "
+                                          << item.confidenceScore << '\n';
+
+                                std::cout << "Confidence: "
+                                          << item.getConfidenceString() << '\n';
+
+                                std::cout << "Candidate Accepted: "
+                                          << item.artifactId << '\n';
+
+                                evidence.push_back(item);
+                            }
+                        }
+                        else
+                        {
+                            std::cout << "Candidate rejected: "
+                                      << item.artifactId << '\n';
+                        }
+
+                        std::cout << "SHA-256: " << item.sha256 << std::endl;
 
                         jpegInProgress = false;
                         scanOffset = endOffset + 1;
