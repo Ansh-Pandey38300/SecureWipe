@@ -30,6 +30,10 @@ Workstations are now linked to a specific Workstation Center rather than existin
 
 Hierarchy: Workstation Center → Head → Employees → Workstations.
 
+Workstation Centre and Workstation IDs were switched from UUIDs to clean sequential formats — CTR-0001, CTR-0002... for Centres, and WS-0001, WS-0002... for Workstations — generated through a reusable Counter model using MongoDB's atomic increment. Sanitization Request IDs (REQ-0001...) are planned to follow the same pattern. MongoDB _id is still used internally; these sequential IDs are for anything human-facing.
+
+A Mongoose model-reference bug (mismatch between "WorkStation" and "Workstation") was also found and fixed — it was causing workstation info to display incorrectly. The Workstation Head Dashboard now shows the Centre ID and has its own dedicated Sanitization Requests section for tracking requests after assignment.
+
 ## Evidence
 Screenshot:
 Screenshot:
