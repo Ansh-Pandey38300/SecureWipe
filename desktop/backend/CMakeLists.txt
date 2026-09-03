@@ -1,3 +1,5 @@
+find_package(libjpeg-turbo CONFIG REQUIRED)
+
 add_library(
     SecureWipeStorage
 
@@ -21,18 +23,23 @@ add_library(
     sanitization/src/NvmeSanitizer.cpp
 
     forensic/evidence/src/EvidenceCollector.cpp
-
+    forensic/validation/src/EvidenceValidator.cpp
+    forensic/hashing/src/HashCalculator.cpp
+    forensic/scoring/src/ConfidenceScorer.cpp
 )
 
 target_include_directories(
     SecureWipeStorage
     PUBLIC
-    storage/include
-    discovery/include
-    classification/include
-    safety/include
-    sanitization/include
-    forensic/evidence/include
+        storage/include
+        discovery/include
+        classification/include
+        safety/include
+        sanitization/include
+        forensic/evidence/include
+        forensic/validation/include
+        forensic/hashing/include
+        forensic/scoring/include
 )
 
 if(WIN32)
@@ -41,6 +48,8 @@ if(WIN32)
         PUBLIC
             wbemuuid
             setupapi
+            bcrypt
+            libjpeg-turbo::jpeg
     )
 endif()
 
@@ -55,7 +64,7 @@ add_executable(
 )
 
 add_executable(
-    WindowsStorageDiscoveryTest 
+    WindowsStorageDiscoveryTest
     tests/WindowsStorageDiscoveryTest.cpp
 )
 
@@ -80,18 +89,28 @@ add_executable(
 )
 
 add_executable(
-   SanitizationCapabilityTest
+    SanitizationCapabilityTest
     tests/SanitizationCapabilityTest.cpp
 )
 
 add_executable(
-   NvmeCapabilityTest
-   tests/NvmeCapabilityTest.cpp
+    NvmeCapabilityTest
+    tests/NvmeCapabilityTest.cpp
 )
 
 add_executable(
-   EvidenceCollectorTest
-   tests/forensic/evidence/EvidenceCollectorTest.cpp
+    EvidenceCollectorTest
+    tests/forensic/evidence/EvidenceCollectorTest.cpp
+)
+
+add_executable(
+    HashCalculatorTest
+    tests/forensic/hashing/HashCalculatorTest.cpp
+)
+
+add_executable(
+    ConfidenceScorerTest
+    tests/forensic/scoring/ConfidenceScorerTest.cpp
 )
 
 set(STORAGE_TESTS
@@ -105,25 +124,30 @@ set(STORAGE_TESTS
     SanitizationCapabilityTest
     NvmeCapabilityTest
     EvidenceCollectorTest
+    HashCalculatorTest
+    ConfidenceScorerTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)
 
-target_include_directories(
-    ${TEST_TARGET}
-    PRIVATE
-        storage/include
-        discovery/include
-        classification/include
-        safety/include
-        sanitization/include
-)
+    target_include_directories(
+        ${TEST_TARGET}
+        PRIVATE
+            storage/include
+            discovery/include
+            classification/include
+            safety/include
+            sanitization/include
+            forensic/evidence/include
+            forensic/validation/include
+            forensic/hashing/include
+            forensic/scoring/include
+    )
 
-target_link_libraries(
-    ${TEST_TARGET}
-    PRIVATE
-        SecureWipeStorage
-)
+    target_link_libraries(
+        ${TEST_TARGET}
+        PRIVATE
+            SecureWipeStorage
+    )
 
 endforeach()
-
