@@ -14,6 +14,20 @@ Added a Device Details page that reads real backend device data — model, seria
 
 Known issue (backend, not fixed today): device capacity currently displays as 0 B, and classification values shown may not be final. Worth flagging to Subhranil since this touches the storage/classification layer he's building.
 
+## Employee Dashboard integration (added 31 Aug)
+The Qt desktop app now authenticates as an employee and pulls that employee's assigned requests from the backend (GET /api/sanitization-requests/employee) using a Bearer token, and shows them in the existing "My Assigned Jobs" table. Dashboard counters (Total, Completed, Failed, In Progress) are now calculated from real backend data instead of being hardcoded — confirmed a FAILED request correctly bumps the Failed counter.
+
+Backend code was not touched at all for this — purely a frontend integration. Network/API logic was kept in a separate SanitizationRequestService class rather than mixed into the main window code.
+
+A role-mismatch bug came up: the API correctly returned 403 when logged in as a WORKSTATION_HEAD account (that endpoint is employee-only) — that's expected behavior, not a bug, just confirms the permission check works. Retesting with an actual employee account worked correctly.
+
+## Request selection → Wipe workflow (added 2 Sep)
+An employee can now select an assigned request directly from the Dashboard table, and that selection (request ID, device type, assigned sanitization method) carries over to the Wipe page. The "Start Sanitization" button only becomes enabled once both a request AND a physical device are selected — it can't be clicked prematurely.
+
+A deliberate decision here: the sanitization method is whatever the backend assigned to the request — the desktop UI does not let the employee override it with a different method from a dropdown. The backend request is treated as the source of truth, not local UI choices.
+
+This is UI wiring only — no actual sanitization runs yet. The next real step is confirming the selected request actually matches the selected physical device before anything destructive can happen.
+
 ## Not done yet
 No backend integration at all — the UI exists but isn't wired up to the auth/backend APIs yet. That's the next big step once both sides are ready to connect.
 
