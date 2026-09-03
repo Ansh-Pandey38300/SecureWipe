@@ -19,12 +19,27 @@ public:
         const QString &token
     );
 
+    void updateRequestStatus(
+    const QString &token,
+    const QString &requestId,
+    const QString &status
+    );
+
 signals:
     void assignedRequestsFetched(
         const QJsonArray &requests
     );
 
     void requestFetchFailed(
+        const QString &message
+    );
+
+    void requestStatusUpdated(
+    const QString &requestId,
+    const QString &status
+    );
+
+    void requestStatusUpdateFailed(
         const QString &message
     );
 

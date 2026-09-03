@@ -27,6 +27,9 @@ public:
     ~MainWindow() override;
 
 private:
+    QString selectedRequestId;
+    QString selectedRequestDeviceType;
+    QString selectedRequestMethod;
     Ui::MainWindow *ui;
 
     AuthManager *authManager;
