@@ -23,9 +23,9 @@ describe("WORKSTATION CENTER API", () => {
     let centerMongoId;
 
 
-    // ==================================================
+    
     // SETUP
-    // ==================================================
+    
 
     beforeAll(async () => {
 
@@ -104,9 +104,9 @@ describe("WORKSTATION CENTER API", () => {
         employee2Id = employee2._id.toString();
 
 
-        // ==================================================
+        
         // LOGIN
-        // ==================================================
+        
 
         // ----------------------------------------------
         // ADMIN LOGIN
@@ -163,9 +163,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 1. CREATE WORKSTATION CENTER
-    // ==================================================
+    
 
     test("Admin should be able to create workstation center", async () => {
 
@@ -216,9 +216,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 2. VERIFY CENTER CREATED IN DATABASE
-    // ==================================================
+    
 
     test("Created workstation center should exist in database", async () => {
 
@@ -241,9 +241,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 3. NON-ADMIN CANNOT CREATE CENTER
-    // ==================================================
+    
 
     test("Non-admin should not be able to create workstation center", async () => {
 
@@ -273,9 +273,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 4. ADMIN GET CENTER
-    // ==================================================
+    
 
     test("Admin should be able to get workstation center", async () => {
 
@@ -314,9 +314,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 5. WORKSTATION HEAD CAN ACCESS OWN CENTER
-    // ==================================================
+    
 
     test("Workstation head should be able to access own center", async () => {
 
@@ -353,9 +353,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 6. CUSTOMER CAN ACCESS CENTER
-    // ==================================================
+    
 
     test("Customer should be able to view workstation center", async () => {
 
@@ -395,9 +395,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 7. ASSIGN EMPLOYEES
-    // ==================================================
+    
 
     test("Admin should be able to assign employees", async () => {
 
@@ -446,9 +446,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 8. VERIFY CENTER EMPLOYEES IN DATABASE
-    // ==================================================
+    
 
     test("Assigned employees should exist in workstation center", async () => {
 
@@ -475,9 +475,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 9. VERIFY USER WORKSTATION CENTER
-    // ==================================================
+    
 
     test("Assigned employees should have workstationCenter set", async () => {
 
@@ -508,9 +508,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 10. VERIFY POPULATED EMPLOYEES
-    // ==================================================
+    
 
     test("Center should return populated assigned employees", async () => {
 
@@ -546,9 +546,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 11. DUPLICATE EMPLOYEE ASSIGNMENT
-    // ==================================================
+    
 
     test("Already assigned employee should not be assigned again", async () => {
 
@@ -573,9 +573,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 12. INVALID EMPLOYEE ROLE
-    // ==================================================
+    
 
     test("Non-workstation employee should not be assigned", async () => {
 
@@ -600,9 +600,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 13. CUSTOMER CANNOT ASSIGN EMPLOYEES
-    // ==================================================
+    
 
     test("Customer should not be able to assign employees", async () => {
 
@@ -622,9 +622,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 14. INVALID CENTER ID
-    // ==================================================
+    
 
     test("Non-existing workstation center should return 404", async () => {
 
@@ -642,9 +642,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 15. WORKSTATION HEAD CANNOT ACCESS ANOTHER CENTER
-    // ==================================================
+    
 
     test("Workstation head should not access another user's center", async () => {
 
@@ -702,9 +702,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 16. WORKSTATION HEAD CAN ASSIGN TO OWN CENTER
-    // ==================================================
+    
 
     test("Workstation head should be able to assign employees to own center", async () => {
 
@@ -762,9 +762,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 17. EMPTY EMPLOYEE ARRAY
-    // ==================================================
+    
 
     test("Empty employeesIds array should be rejected", async () => {
 
@@ -785,9 +785,9 @@ describe("WORKSTATION CENTER API", () => {
     });
 
 
-    // ==================================================
+    
     // 18. EMPLOYEES IDS MUST BE ARRAY
-    // ==================================================
+    
 
     test("employeesIds should be an array", async () => {
 

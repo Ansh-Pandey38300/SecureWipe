@@ -25,9 +25,9 @@ describe("USERS API", () => {
     };
 
 
-    // ==========================================
+     
     // SETUP
-    // ==========================================
+     
 
     beforeAll(async () => {
 
@@ -111,9 +111,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 1. GET ALL USERS
-    // ==========================================
+     
 
     test("Admin should be able to get all users", async () => {
 
@@ -130,9 +130,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 2. NON-ADMIN GET ALL USERS
-    // ==========================================
+     
 
     test("Non-admin should not be able to get all users", async () => {
 
@@ -149,9 +149,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 3. UPDATE USER ROLE
-    // ==========================================
+     
 
     test("Admin should be able to update user role", async () => {
 
@@ -174,9 +174,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 4. INVALID ROLE
-    // ==========================================
+     
 
     test("Admin should not be able to assign an invalid role", async () => {
 
@@ -196,9 +196,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 5. NORMAL USER CANNOT BECOME ADMIN
-    // ==========================================
+     
 
     test("Normal user should not be assigned ADMIN role", async () => {
 
@@ -218,9 +218,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 6. EXISTING ADMIN ROLE CANNOT BE CHANGED
-    // ==========================================
+     
 
     test("Existing ADMIN role should not be changed", async () => {
 
@@ -240,9 +240,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 7. NON-ADMIN UPDATE ROLE
-    // ==========================================
+     
 
     test("Non-admin should not be able to update user role", async () => {
 
@@ -262,9 +262,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 8. ELIGIBLE WORKSTATION HEADS
-    // ==========================================
+     
 
     test("Admin should be able to get eligible workstation heads", async () => {
 
@@ -281,9 +281,9 @@ describe("USERS API", () => {
     });
 
 
-    // ==========================================
+     
     // 9. NON-ADMIN ELIGIBLE HEADS
-    // ==========================================
+     
 
     test("Non-admin should not be able to get eligible workstation heads", async () => {
 
