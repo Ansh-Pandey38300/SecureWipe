@@ -9,22 +9,75 @@
 #include "ui_mainwindow.h"
 #include "services/SanitizationRequestService.h"
 
+#include "../../backend/classification/include/DeviceClassifier.h"
+#include "../../backend/classification/include/ClassificationResult.h"
+#include "../../backend/sanitization/include/SanitizationCapability.h"
+
+#include <QAbstractItemView>
+#include <QComboBox>
 #include <QHeaderView>
 #include <QHBoxLayout>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QLabel>
+#include <QLayout>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QTableView>
-#include <QVBoxLayout>
-#include <QComboBox>
-#include <QLabel>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QJsonValue>
 #include <QTableWidgetItem>
+#include <QVBoxLayout>
 
 #include "styles/AppTheme.h"
-#include <QLayout>
+
+
+static bool requestMatchesDevice(
+    const QString &requestedType,
+    const StorageDevice &device)
+{
+    DeviceClassifier classifier;
+
+    const ClassificationResult classification =
+        classifier.classify(device);
+
+    const QString requestType =
+        requestedType.trimmed();
+
+    if (requestType == QStringLiteral("SSD"))
+    {
+        return classification.mediaType ==
+               MediaType::SSD;
+    }
+
+    if (requestType == QStringLiteral("HDD"))
+    {
+        return classification.mediaType ==
+               MediaType::HDD;
+    }
+
+    if (requestType == QStringLiteral("USB Drive"))
+    {
+        return classification.busType ==
+               BusType::USB;
+    }
+
+    if (requestType == QStringLiteral("NVMe SSD"))
+    {
+        return classification.busType ==
+                   BusType::NVMe
+               &&
+               classification.mediaType ==
+                   MediaType::SSD;
+    }
+
+    /*
+     * "Other" must not automatically match a physical
+     * device because there is currently no defined
+     * sanitization mapping for it.
+     */
+    return false;
+}
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -32,64 +85,151 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , authManager(new AuthManager(this))
     , sanitizationRequestService(
-      new SanitizationRequestService(this))
+          new SanitizationRequestService(this))
     , deviceController(new DeviceController(this))
     , deviceTableModel(new DeviceTableModel(this))
     , deviceDetailsPage(nullptr)
     , refreshDevicesButton(nullptr)
 {
     ui->setupUi(this);
-    ui->recentJobsTable->setHorizontalHeaderLabels({
-    QStringLiteral("Request ID"),
-    QStringLiteral("Device"),
-    QStringLiteral("Method"),
-    QStringLiteral("Status")
-    });
-    ui->recentJobsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->recentJobsTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->recentJobsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    connect(
-    ui->recentJobsTable,
-    &QTableWidget::itemSelectionChanged,
-    this,
-    [this]()
-    {
-        const int row = ui->recentJobsTable->currentRow();
-
-        if (row < 0)
-        {
-            selectedRequestId.clear();
-            selectedRequestDeviceType.clear();
-            selectedRequestMethod.clear();
-            return;
-        }
-
-        selectedRequestId = ui->recentJobsTable->item(row, 0)
-                                ? ui->recentJobsTable->item(row, 0)->text()
-                                : QString();
-
-        selectedRequestDeviceType = ui->recentJobsTable->item(row, 1)
-                                        ? ui->recentJobsTable->item(row, 1)->text()
-                                        : QString();
-
-        selectedRequestMethod = ui->recentJobsTable->item(row, 2)
-                                   ? ui->recentJobsTable->item(row, 2)->text()
-                                   : QString();
-    }
-);
 
     /*
-     * The .ui file contains old dark-theme styles.
-     * Remove those styles so AppTheme can control
-     * the complete application appearance.
+     * =========================================================
+     * Assigned Request Table
+     * =========================================================
      */
-    connect(
-        ui->logoutButton,
-        &QPushButton::clicked,
-        this,
-        &MainWindow::logout
+
+    ui->recentJobsTable->setHorizontalHeaderLabels({
+        QStringLiteral("Request ID"),
+        QStringLiteral("Device"),
+        QStringLiteral("Method"),
+        QStringLiteral("Status")
+    });
+
+    ui->recentJobsTable->setSelectionBehavior(
+        QAbstractItemView::SelectRows
     );
+
+    ui->recentJobsTable->setSelectionMode(
+        QAbstractItemView::SingleSelection
+    );
+
+    ui->recentJobsTable->setEditTriggers(
+        QAbstractItemView::NoEditTriggers
+    );
+
+
+    /*
+     * ---------------------------------------------------------
+     * Request Selection
+     * ---------------------------------------------------------
+     *
+     * The selected request is the source of truth for:
+     *
+     *   selectedRequestId
+     *   selectedRequestDeviceType
+     *   selectedRequestMethod
+     *
+     * The employee does not choose the sanitization method
+     * manually.
+     */
+
+    connect(
+        ui->recentJobsTable,
+        &QTableWidget::itemSelectionChanged,
+        this,
+        [this]()
+        {
+            const int row =
+                ui->recentJobsTable->currentRow();
+
+            if (row < 0)
+            {
+                selectedRequestId.clear();
+                selectedRequestDeviceType.clear();
+                selectedRequestMethod.clear();
+
+                ui->methodComboBox->clear();
+                ui->methodComboBox->setEnabled(false);
+
+                ui->deviceComboBox->clear();
+
+                ui->startWipeButton->setEnabled(false);
+
+                return;
+            }
+
+
+            selectedRequestId =
+                ui->recentJobsTable->item(row, 0)
+                    ? ui->recentJobsTable
+                          ->item(row, 0)
+                          ->text()
+                    : QString();
+
+
+            selectedRequestDeviceType =
+                ui->recentJobsTable->item(row, 1)
+                    ? ui->recentJobsTable
+                          ->item(row, 1)
+                          ->text()
+                    : QString();
+
+
+            selectedRequestMethod =
+                ui->recentJobsTable->item(row, 2)
+                    ? ui->recentJobsTable
+                          ->item(row, 2)
+                          ->text()
+                    : QString();
+
+
+            /*
+             * The assigned backend method is displayed,
+             * but the employee cannot change it.
+             */
+
+            ui->methodComboBox->clear();
+
+            if (!selectedRequestMethod.isEmpty())
+            {
+                ui->methodComboBox->addItem(
+                    selectedRequestMethod
+                );
+            }
+
+            ui->methodComboBox->setCurrentIndex(
+                selectedRequestMethod.isEmpty()
+                    ? -1
+                    : 0
+            );
+
+            ui->methodComboBox->setEnabled(
+                !selectedRequestMethod.isEmpty()
+            );
+
+
+            /*
+             * Refresh physical devices so the Wipe page
+             * is filtered against the newly selected request.
+             */
+
+            deviceController->refreshDevices();
+        }
+    );
+
+
+    /*
+     * =========================================================
+     * Appearance
+     * =========================================================
+     */
+
+    /*
+     * The .ui file may contain older styles.
+     * Clear them so AppTheme controls the application.
+     */
 
     const QList<QWidget *> widgets =
         findChildren<QWidget *>();
@@ -101,50 +241,68 @@ MainWindow::MainWindow(QWidget *parent)
 
     AppTheme::apply(this);
 
+
+    /*
+     * =========================================================
+     * Devices Page
+     * =========================================================
+     */
+
     setupDevicesPage();
 
 
     /*
-     * ---------------------------------------------------------
+     * =========================================================
      * Authentication
-     * ---------------------------------------------------------
+     * =========================================================
      */
 
     connect(
-    authManager,
-    &AuthManager::loginSuccessful,
-    this,
-    [this]()
-    {
-        ui->stackedWidget->setCurrentWidget(
-            ui->appPage
-        );
-
-        ui->contentStack->setCurrentWidget(
-            ui->dashboardPage
-        );
-
-        setActiveNavButton(
-            ui->dashboardNavButton
-        );
-
-        /*
-         * Fetch requests assigned to the
-         * currently logged-in employee.
-         */
-
-        sanitizationRequestService
-    ->fetchAssignedRequests(
-        authManager->token()
+        ui->logoutButton,
+        &QPushButton::clicked,
+        this,
+        &MainWindow::logout
     );
 
-        /*
-         * Discover physical storage devices
-         * after successful login.
-         */
-        refreshDevices();
-    }
-);
+
+    connect(
+        authManager,
+        &AuthManager::loginSuccessful,
+        this,
+        [this]()
+        {
+            ui->stackedWidget->setCurrentWidget(
+                ui->appPage
+            );
+
+            ui->contentStack->setCurrentWidget(
+                ui->dashboardPage
+            );
+
+            setActiveNavButton(
+                ui->dashboardNavButton
+            );
+
+
+            /*
+             * Fetch requests assigned to the
+             * currently logged-in employee.
+             */
+
+            sanitizationRequestService
+                ->fetchAssignedRequests(
+                    authManager->token()
+                );
+
+
+            /*
+             * Discover physical storage devices
+             * after successful login.
+             */
+
+            refreshDevices();
+        }
+    );
 
 
     connect(
@@ -169,41 +327,59 @@ MainWindow::MainWindow(QWidget *parent)
             ui->loginErrorLabel->clear();
 
             const QString email =
-                ui->emailLineEdit->text().trimmed();
+                ui->emailLineEdit
+                    ->text()
+                    .trimmed();
+
 
             if (email.isEmpty())
             {
                 ui->loginErrorLabel->setText(
-                    "Email is required."
+                    QStringLiteral(
+                        "Email is required."
+                    )
                 );
 
                 return;
             }
+
 
             QRegularExpression emailPattern(
                 R"(^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$)"
             );
 
-            if (!emailPattern.match(email).hasMatch())
+
+            if (!emailPattern
+                    .match(email)
+                    .hasMatch())
             {
                 ui->loginErrorLabel->setText(
-                    "Please enter a valid email address."
+                    QStringLiteral(
+                        "Please enter a valid email address."
+                    )
                 );
 
                 return;
             }
 
+
             const QString password =
-                ui->passwordLineEdit->text().trimmed();
+                ui->passwordLineEdit
+                    ->text()
+                    .trimmed();
+
 
             if (password.isEmpty())
             {
                 ui->loginErrorLabel->setText(
-                    "Password is required."
+                    QStringLiteral(
+                        "Password is required."
+                    )
                 );
 
                 return;
             }
+
 
             authManager->login(
                 email,
@@ -214,9 +390,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     /*
-     * ---------------------------------------------------------
+     * =========================================================
      * Navigation
-     * ---------------------------------------------------------
+     * =========================================================
      */
 
     connect(
@@ -253,42 +429,48 @@ MainWindow::MainWindow(QWidget *parent)
             /*
              * Refresh whenever the Devices page is opened.
              */
+
             refreshDevices();
         }
     );
 
 
     connect(
-    ui->wipeNavButton,
-    &QPushButton::clicked,
-    this,
-    [this]()
-    {
-        ui->contentStack->setCurrentWidget(
-            ui->wipePage
-        );
-
-        setActiveNavButton(
-            ui->wipeNavButton
-        );
-
-        if (selectedRequestId.isEmpty())
+        ui->wipeNavButton,
+        &QPushButton::clicked,
+        this,
+        [this]()
         {
-            ui->statusLabel->setText(
-                QStringLiteral("Select an assigned request from Dashboard before sanitization.")
+            ui->contentStack->setCurrentWidget(
+                ui->wipePage
             );
-        }
-        else
-        {
-            ui->statusLabel->setText(
-                QStringLiteral("Request: %1 | Device: %2 | Method: %3")
-                    .arg(selectedRequestId)
-                    .arg(selectedRequestDeviceType)
-                    .arg(selectedRequestMethod)
+
+            setActiveNavButton(
+                ui->wipeNavButton
             );
+
+
+            if (selectedRequestId.isEmpty())
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Select an assigned request from Dashboard before sanitization."
+                    )
+                );
+            }
+            else
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Request: %1 | Device: %2 | Method: %3"
+                    )
+                        .arg(selectedRequestId)
+                        .arg(selectedRequestDeviceType)
+                        .arg(selectedRequestMethod)
+                );
+            }
         }
-    }
-);
+    );
 
 
     connect(
@@ -326,9 +508,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     /*
-     * ---------------------------------------------------------
-     * Backend → Frontend
-     * ---------------------------------------------------------
+     * =========================================================
+     * Device Controller → Frontend
+     * =========================================================
      */
 
     connect(
@@ -343,34 +525,80 @@ MainWindow::MainWindow(QWidget *parent)
 
 
             /*
-             * Keep the Wipe page device selector
-             * synchronized with the latest discovery.
+             * Keep the Wipe page device selector synchronized
+             * with the latest physical-device discovery.
+             *
+             * Only devices matching the selected request type
+             * are shown.
              */
+
             ui->deviceComboBox->clear();
 
-            for (const StorageDevice& device :
-                 deviceController->devices())
+            const auto &devices =
+                deviceController->devices();
+
+
+            for (int deviceIndex = 0;
+                 deviceIndex < static_cast<int>(
+                     devices.size());
+                 ++deviceIndex)
             {
+                const StorageDevice &device =
+                    devices[deviceIndex];
+
+
+                if (!selectedRequestDeviceType.isEmpty())
+                {
+                    if (!requestMatchesDevice(
+                            selectedRequestDeviceType,
+                            device))
+                    {
+                        continue;
+                    }
+                }
+
+
                 QString label =
                     QString::fromStdString(
                         device.getModel()
                     );
 
+
                 label +=
                     QStringLiteral(" (");
+
 
                 label +=
                     QString::fromStdString(
                         device.getDeviceId()
                     );
 
+
                 label +=
                     QStringLiteral(")");
 
+
+                /*
+                 * Store the ORIGINAL device index.
+                 *
+                 * This is important because the combo box
+                 * may contain only a filtered subset.
+                 */
+
                 ui->deviceComboBox->addItem(
-                    label
+                    label,
+                    deviceIndex
                 );
             }
+
+
+            /*
+             * Do not automatically select a physical device.
+             */
+
+            ui->deviceComboBox->setCurrentIndex(-1);
+
+            ui->startWipeButton->setEnabled(false);
         }
     );
 
@@ -383,28 +611,31 @@ MainWindow::MainWindow(QWidget *parent)
         {
             QMessageBox::warning(
                 this,
-                "Storage Discovery",
+                QStringLiteral(
+                    "Storage Discovery"
+                ),
                 message
             );
         }
     );
 
-    connect(
-    deviceController,
-    &DeviceController::safetyCheckPassed,
-    this,
-    [this]()
-    {
-        if (!deviceDetailsPage)
-        {
-            return;
-        }
 
-        deviceDetailsPage->updateSafetyStatus(
-            true
-        );
-    }
-);
+    connect(
+        deviceController,
+        &DeviceController::safetyCheckPassed,
+        this,
+        [this]()
+        {
+            if (!deviceDetailsPage)
+            {
+                return;
+            }
+
+            deviceDetailsPage->updateSafetyStatus(
+                true
+            );
+        }
+    );
 
 
     connect(
@@ -425,123 +656,162 @@ MainWindow::MainWindow(QWidget *parent)
         }
     );
 
-    connect(
-    sanitizationRequestService,
-    &SanitizationRequestService::assignedRequestsFetched,
-    this,
-    [this](const QJsonArray &requests)
-    {
-        int totalCount = requests.size();
-        int completedCount = 0;
-        int failedCount = 0;
-        int inProgressCount = 0;
-        ui->recentJobsTable->setRowCount(
-            0
-        );
 
-        for (const QJsonValue &value : requests)
+    /*
+     * =========================================================
+     * Assigned Requests → Dashboard
+     * =========================================================
+     */
+
+    connect(
+        sanitizationRequestService,
+        &SanitizationRequestService::assignedRequestsFetched,
+        this,
+        [this](const QJsonArray &requests)
         {
-            if (!value.isObject())
+            int totalCount = requests.size();
+            int completedCount = 0;
+            int failedCount = 0;
+            int inProgressCount = 0;
+
+
+            ui->recentJobsTable->setRowCount(
+                0
+            );
+
+
+            for (const QJsonValue &value : requests)
             {
-                continue;
+                if (!value.isObject())
+                {
+                    continue;
+                }
+
+
+                const QJsonObject request =
+                    value.toObject();
+
+
+                const int row =
+                    ui->recentJobsTable->rowCount();
+
+
+                ui->recentJobsTable->insertRow(
+                    row
+                );
+
+
+                const QString requestId =
+                    request.value(
+                        QStringLiteral("requestId")
+                    ).toString();
+
+
+                const QString deviceType =
+                    request.value(
+                        QStringLiteral("deviceType")
+                    ).toString();
+
+
+                const QString method =
+                    request.value(
+                        QStringLiteral(
+                            "sanitizationMethod"
+                        )
+                    ).toString();
+
+
+                const QString status =
+                    request.value(
+                        QStringLiteral("status")
+                    ).toString();
+
+
+                if (status ==
+                    QStringLiteral("COMPLETED"))
+                {
+                    completedCount++;
+                }
+                else if (status ==
+                         QStringLiteral("FAILED"))
+                {
+                    failedCount++;
+                }
+                else if (status ==
+                         QStringLiteral("IN_PROGRESS"))
+                {
+                    inProgressCount++;
+                }
+
+
+                ui->recentJobsTable->setItem(
+                    row,
+                    0,
+                    new QTableWidgetItem(
+                        requestId
+                    )
+                );
+
+
+                ui->recentJobsTable->setItem(
+                    row,
+                    1,
+                    new QTableWidgetItem(
+                        deviceType
+                    )
+                );
+
+
+                ui->recentJobsTable->setItem(
+                    row,
+                    2,
+                    new QTableWidgetItem(
+                        method
+                    )
+                );
+
+
+                ui->recentJobsTable->setItem(
+                    row,
+                    3,
+                    new QTableWidgetItem(
+                        status
+                    )
+                );
             }
 
-            const QJsonObject request =
-                value.toObject();
 
-            const int row =
-                ui->recentJobsTable->rowCount();
-
-            ui->recentJobsTable->insertRow(
-                row
-            );
-
-            const QString requestId =
-                request.value(
-                    QStringLiteral("requestId")
-                ).toString();
-
-            const QString deviceType =
-                request.value(
-                    QStringLiteral("deviceType")
-                ).toString();
-
-            const QString method =
-                request.value(
-                    QStringLiteral("sanitizationMethod")
-                ).toString();
-
-            const QString status =
-                request.value(
-                    QStringLiteral("status")
-                ).toString();
-            
-            if (status == QStringLiteral("COMPLETED"))
-{
-    completedCount++;
-}
-else if (status == QStringLiteral("FAILED"))
-{
-    failedCount++;
-}
-else if (status == QStringLiteral("IN_PROGRESS"))
-{
-    inProgressCount++;
-}
-
-            ui->recentJobsTable->setItem(
-                row,
-                0,
-                new QTableWidgetItem(
-                    requestId
+            ui->totalJobsValue->setText(
+                QString::number(
+                    totalCount
                 )
             );
 
-            ui->recentJobsTable->setItem(
-                row,
-                1,
-                new QTableWidgetItem(
-                    deviceType
+
+            ui->completedJobsValue->setText(
+                QString::number(
+                    completedCount
                 )
             );
 
-            ui->recentJobsTable->setItem(
-                row,
-                2,
-                new QTableWidgetItem(
-                    method
+
+            ui->failedJobsValue->setText(
+                QString::number(
+                    failedCount
                 )
             );
 
-            ui->recentJobsTable->setItem(
-                row,
-                3,
-                new QTableWidgetItem(
-                    status
-                )
-            );
-        }
 
-        ui->totalJobsValue->setText(
-    QString::number(totalCount)
-);
-
-ui->completedJobsValue->setText(
-    QString::number(completedCount)
-);
-
-ui->failedJobsValue->setText(
-    QString::number(failedCount)
-);
-
-ui->inProgressValue->setText(
+            ui->inProgressValue->setText(
     QString::number(inProgressCount)
 );
 
-        ui->recentJobsTable
-            ->resizeColumnsToContents();
-    }
-);
+
+            ui->recentJobsTable
+                ->resizeColumnsToContents();
+        }
+    );
+
 
     connect(
         sanitizationRequestService,
@@ -551,25 +821,32 @@ ui->inProgressValue->setText(
         {
             ui->recentJobsTable->setRowCount(
                 0
-                );
+            );
+
 
             QMessageBox::warning(
                 this,
-                QStringLiteral("Assigned Requests"),
+                QStringLiteral(
+                    "Assigned Requests"
+                ),
                 message
-                );
+            );
         }
-);
+    );
 
 
     /*
-     * ---------------------------------------------------------
+     * =========================================================
      * Wipe Target Selection
-     * ---------------------------------------------------------
+     * =========================================================
      *
-     * When the user selects a device from the Wipe page,
-     * DeviceController saves that device as the expected target.
+     * The combo box contains only devices matching the
+     * selected request.
+     *
+     * itemData() stores the original index in the complete
+     * DeviceController device list.
      */
+
     connect(
         ui->deviceComboBox,
         QOverload<int>::of(
@@ -580,10 +857,42 @@ ui->inProgressValue->setText(
         {
             if (index < 0)
             {
+                ui->startWipeButton->setEnabled(
+                    false
+                );
+
                 return;
             }
 
-            if (!deviceController->selectTarget(index))
+
+            bool ok = false;
+
+
+            const int deviceIndex =
+                ui->deviceComboBox
+                    ->itemData(index)
+                    .toInt(&ok);
+
+
+            if (!ok)
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Unable to identify selected device."
+                    )
+                );
+
+
+                ui->startWipeButton->setEnabled(
+                    false
+                );
+
+                return;
+            }
+
+
+            if (!deviceController->selectTarget(
+                    deviceIndex))
             {
                 ui->statusLabel->setText(
                     QStringLiteral(
@@ -591,37 +900,102 @@ ui->inProgressValue->setText(
                     )
                 );
 
+
+                ui->startWipeButton->setEnabled(
+                    false
+                );
+
                 return;
             }
 
+
+            /*
+             * Capability detection is informational at this
+             * stage. It does not authorize sanitization.
+             */
+
+            const SanitizationCapability capability =
+                deviceController
+                    ->detectSelectedTargetCapability();
+
+
+            QString capabilityText;
+
+
+            if (capability.nativeSanitizeSupported ==
+                NativeSanitizeSupport::SUPPORTED)
+            {
+                capabilityText =
+                    QStringLiteral(
+                        "Native sanitization supported."
+                    );
+            }
+            else if (capability.isUsbDevice &&
+                     capability.scsiPathAvailable)
+            {
+                capabilityText =
+                    QStringLiteral(
+                        "USB/SCSI sanitization path detected."
+                    );
+            }
+            else
+            {
+                capabilityText =
+                    QStringLiteral(
+                        "No supported sanitization method detected."
+                    );
+            }
+
+
             ui->statusLabel->setText(
                 QStringLiteral(
-                "Target device selected."
-            )
-);
+                    "Target device selected. %1"
+                ).arg(capabilityText)
+            );
 
-    const bool requestSelected =
-        !selectedRequestId.isEmpty();
 
-    const bool deviceSelected =
-        ui->deviceComboBox->currentIndex() >= 0;
+            const bool requestSelected =
+                !selectedRequestId.isEmpty();
 
-    ui->startWipeButton->setEnabled(
-        requestSelected && deviceSelected
-    );
+
+            const bool deviceSelected =
+                ui->deviceComboBox
+                    ->currentIndex() >= 0;
+
+
+            ui->startWipeButton->setEnabled(
+                requestSelected &&
+                deviceSelected
+            );
         }
     );
-    ui->startWipeButton->setEnabled(false);
 
 
     /*
-     * ---------------------------------------------------------
-     * Start Sanitization
-     * ---------------------------------------------------------
-     *
-     * The target is freshly discovered and validated first.
-     * Only after successful validation does SafetyEngine run.
+     * Never enable Start Sanitization automatically.
      */
+
+    ui->startWipeButton->setEnabled(
+        false
+    );
+
+
+    /*
+     * =========================================================
+     * Start Sanitization
+     * =========================================================
+     *
+     * Current stage:
+     *
+     *   1. Request must be selected.
+     *   2. Physical target must be selected.
+     *   3. Target is freshly discovered.
+     *   4. Request/device type must match.
+     *   5. SafetyEngine must approve the target.
+     *
+     * Actual sanitization is intentionally NOT invoked yet.
+     */
+
     connect(
         ui->startWipeButton,
         &QPushButton::clicked,
@@ -629,54 +1003,163 @@ ui->inProgressValue->setText(
         [this]()
         {
             /*
-             * Step 1:
-             *
-             * Freshly discover the storage devices and
-             * verify that the device originally selected
-             * by the user still exists with the same identity.
+             * -------------------------------------------------
+             * Step 1: Assigned request
+             * -------------------------------------------------
              */
-            if (!deviceController->validateSelectedTarget())
+
+            if (selectedRequestId.isEmpty())
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Select an assigned request before sanitization."
+                    )
+                );
+
+                return;
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * Step 2: Physical device
+             * -------------------------------------------------
+             */
+
+            if (!deviceController
+                    ->selectedTarget()
+                    .has_value())
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Select a physical storage device before sanitization."
+                    )
+                );
+
+                return;
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * Step 3: Fresh target validation
+             * -------------------------------------------------
+             *
+             * Rediscover the physical devices and make sure
+             * the selected target still has the same identity.
+             */
+
+            if (!deviceController
+                    ->validateSelectedTarget())
+            {
+                return;
+            }
+
+
+            const auto &selectedTarget =
+                deviceController
+                    ->selectedTarget();
+
+
+            if (!selectedTarget.has_value())
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Validated target is no longer available."
+                    )
+                );
+
+                return;
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * Step 4: Request ↔ physical device matching
+             * -------------------------------------------------
+             */
+
+            if (!requestMatchesDevice(
+                    selectedRequestDeviceType,
+                    *selectedTarget))
+            {
+                ui->statusLabel->setText(
+                    QStringLiteral(
+                        "Selected physical device does not match "
+                        "the assigned request."
+                    )
+                );
+
+
+                QMessageBox::warning(
+                    this,
+                    QStringLiteral(
+                        "Device Mismatch"
+                    ),
+                    QStringLiteral(
+                        "The selected physical device does not "
+                        "match the device type assigned to this "
+                        "request.\n\n"
+                        "Sanitization has been blocked."
+                    )
+                );
+
+
+                return;
+            }
+
+
+            /*
+             * -------------------------------------------------
+             * Step 5: Safety evaluation
+             * -------------------------------------------------
+             */
+
+            if (!deviceController
+                    ->evaluateSelectedTarget())
             {
                 return;
             }
 
 
             /*
-             * Step 2:
+             * -------------------------------------------------
+             * Current stopping point
+             * -------------------------------------------------
              *
-             * Run the SafetyEngine only after target
-             * validation has succeeded.
+             * We have not started a destructive operation.
              */
-            if (!deviceController->evaluateSelectedTarget())
-            {
-                return;
-            }
 
-
-            /*
-             * Step 3:
-             *
-             * All currently enabled safety checks passed.
-             *
-             * The actual sanitization engine should be
-             * called from this point later.
-             */
             ui->statusLabel->setText(
                 QStringLiteral(
                     "Safety checks passed. Ready for sanitization."
                 )
             );
 
+
             QMessageBox::information(
                 this,
-                QStringLiteral("Safety Check"),
+                QStringLiteral(
+                    "Safety Check"
+                ),
                 QStringLiteral(
                     "All safety checks passed.\n\n"
                     "The target device is ready for sanitization."
                 )
             );
 
-            // Actual sanitization call will be added here.
+
+            /*
+             * IMPORTANT:
+             *
+             * Actual SanitizationEngine::sanitize() is NOT
+             * called here yet.
+             *
+             * Backend request status is also NOT changed here.
+             *
+             * Final confirmation + structured result +
+             * execution + verification will be added next.
+             */
         }
     );
 }
@@ -721,11 +1204,13 @@ void MainWindow::setupDevicesPage()
             ui->devicesPage->layout()
         );
 
+
     if (!layout)
     {
-        layout = new QVBoxLayout(
-            ui->devicesPage
-        );
+        layout =
+            new QVBoxLayout(
+                ui->devicesPage
+            );
 
         ui->devicesPage->setLayout(
             layout
@@ -741,9 +1226,12 @@ void MainWindow::setupDevicesPage()
 
     QLabel *titleLabel =
         new QLabel(
-            "Storage Devices",
+            QStringLiteral(
+                "Storage Devices"
+            ),
             ui->devicesPage
         );
+
 
     titleLabel->setStyleSheet(
         "QLabel {"
@@ -756,9 +1244,12 @@ void MainWindow::setupDevicesPage()
 
     QLabel *subtitleLabel =
         new QLabel(
-            "Physical storage devices detected by SecureWipe.",
+            QStringLiteral(
+                "Physical storage devices detected by SecureWipe."
+            ),
             ui->devicesPage
         );
+
 
     subtitleLabel->setStyleSheet(
         "QLabel {"
@@ -776,21 +1267,27 @@ void MainWindow::setupDevicesPage()
 
     refreshDevicesButton =
         new QPushButton(
-            "Refresh Devices",
+            QStringLiteral(
+                "Refresh Devices"
+            ),
             ui->devicesPage
         );
+
 
     refreshDevicesButton->setMinimumHeight(
         38
     );
 
+
     refreshDevicesButton->setMinimumWidth(
         150
     );
 
+
     refreshDevicesButton->setCursor(
         Qt::PointingHandCursor
     );
+
 
     refreshDevicesButton->setStyleSheet(
         "QPushButton {"
@@ -829,11 +1326,14 @@ void MainWindow::setupDevicesPage()
     QHBoxLayout *headerLayout =
         new QHBoxLayout();
 
+
     headerLayout->addWidget(
         titleLabel
     );
 
+
     headerLayout->addStretch();
+
 
     headerLayout->addWidget(
         refreshDevicesButton
@@ -851,41 +1351,50 @@ void MainWindow::setupDevicesPage()
             ui->devicesPage
         );
 
+
     deviceTable->setModel(
         deviceTableModel
     );
+
 
     deviceTable->setSelectionBehavior(
         QAbstractItemView::SelectRows
     );
 
+
     deviceTable->setSelectionMode(
         QAbstractItemView::SingleSelection
     );
+
 
     deviceTable->setEditTriggers(
         QAbstractItemView::NoEditTriggers
     );
 
+
     deviceTable->setAlternatingRowColors(
         true
     );
+
 
     deviceTable->setShowGrid(
         false
     );
 
-    deviceTable->verticalHeader()->setVisible(
-        false
-    );
+
+    deviceTable->verticalHeader()
+        ->setVisible(false);
+
 
     deviceTable->horizontalHeader()
         ->setStretchLastSection(true);
+
 
     deviceTable->horizontalHeader()
         ->setSectionResizeMode(
             QHeaderView::ResizeToContents
         );
+
 
     deviceTable->setMinimumHeight(
         300
@@ -944,21 +1453,26 @@ void MainWindow::setupDevicesPage()
         24
     );
 
+
     layout->setSpacing(
         6
     );
+
 
     layout->addLayout(
         headerLayout
     );
 
+
     layout->addWidget(
         subtitleLabel
     );
 
+
     layout->addSpacing(
         14
     );
+
 
     layout->addWidget(
         deviceTable
@@ -979,13 +1493,18 @@ void MainWindow::refreshDevices()
         return;
     }
 
+
     refreshDevicesButton->setEnabled(
         false
     );
 
+
     refreshDevicesButton->setText(
-        "Scanning..."
+        QStringLiteral(
+            "Scanning..."
+        )
     );
+
 
     /*
      * Current backend discovery is synchronous.
@@ -993,11 +1512,16 @@ void MainWindow::refreshDevices()
      * We will move this to a worker thread later when the
      * sanitization workflow is integrated.
      */
+
     deviceController->refreshDevices();
 
+
     refreshDevicesButton->setText(
-        "Refresh Devices"
+        QStringLiteral(
+            "Refresh Devices"
+        )
     );
+
 
     refreshDevicesButton->setEnabled(
         true
@@ -1014,33 +1538,41 @@ void MainWindow::refreshDevices()
 void MainWindow::showSelectedDeviceDetails()
 {
     const QList<QTableView *> tables =
-        ui->devicesPage->findChildren<QTableView *>();
+        ui->devicesPage
+            ->findChildren<QTableView *>();
+
 
     if (tables.isEmpty())
     {
         return;
     }
 
+
     QTableView *table =
         tables.first();
 
+
     const QModelIndex currentIndex =
         table->currentIndex();
+
 
     if (!currentIndex.isValid())
     {
         return;
     }
 
+
     const StorageDevice *device =
         deviceTableModel->deviceAt(
             currentIndex.row()
         );
 
+
     if (!device)
     {
         return;
     }
+
 
     showDeviceDetails(
         *device
@@ -1054,13 +1586,16 @@ void MainWindow::showDeviceDetails(
     /*
      * Remove the old details page if one already exists.
      */
+
     if (deviceDetailsPage)
     {
         ui->contentStack->removeWidget(
             deviceDetailsPage
         );
 
+
         deviceDetailsPage->deleteLater();
+
 
         deviceDetailsPage = nullptr;
     }
@@ -1069,6 +1604,7 @@ void MainWindow::showDeviceDetails(
     /*
      * Create a new details page for the selected device.
      */
+
     deviceDetailsPage =
         new DeviceDetailsPage(
             device,
@@ -1080,6 +1616,7 @@ void MainWindow::showDeviceDetails(
      * Add the page to the application's stacked
      * content area.
      */
+
     ui->contentStack->addWidget(
         deviceDetailsPage
     );
@@ -1088,15 +1625,16 @@ void MainWindow::showDeviceDetails(
     /*
      * Show Device Details.
      */
+
     ui->contentStack->setCurrentWidget(
         deviceDetailsPage
     );
 
 
     /*
-     * No sidebar item is selected because this is a
-     * detail view inside the Devices workflow.
+     * Keep Devices navigation active.
      */
+
     setActiveNavButton(
         ui->devicesNavButton
     );
@@ -1105,6 +1643,7 @@ void MainWindow::showDeviceDetails(
     /*
      * Back → Devices
      */
+
     connect(
         deviceDetailsPage,
         &DeviceDetailsPage::backRequested,
@@ -1116,6 +1655,7 @@ void MainWindow::showDeviceDetails(
     /*
      * Refresh → rediscover devices.
      */
+
     connect(
         deviceDetailsPage,
         &DeviceDetailsPage::refreshRequested,
@@ -1134,6 +1674,8 @@ void MainWindow::showDevicesPage()
     ui->contentStack->setCurrentWidget(
         ui->devicesPage
     );
+
+
     setActiveNavButton(
         ui->devicesNavButton
     );
@@ -1207,6 +1749,7 @@ void MainWindow::setActiveNavButton(
             continue;
         }
 
+
         button->setStyleSheet(
             button == activeButton
                 ? activeStyle
@@ -1215,6 +1758,12 @@ void MainWindow::setActiveNavButton(
     }
 }
 
+
+/*
+ * =============================================================
+ * Logout
+ * =============================================================
+ */
 
 void MainWindow::logout()
 {

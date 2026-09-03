@@ -30,6 +30,8 @@ private:
     QString selectedRequestId;
     QString selectedRequestDeviceType;
     QString selectedRequestMethod;
+    bool waitingForSanitizationStart = false;
+    bool sanitizationOperationRunning = false;
     Ui::MainWindow *ui;
 
     AuthManager *authManager;
