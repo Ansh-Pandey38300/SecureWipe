@@ -419,11 +419,83 @@ const getMyWorkstationCenter = async (user) => {
         workstations: workstations
     };
 };
+
+const getEligibleEmployees = async (
+    centerId,
+    currentUser
+) => {
+
+    // 1. Authentication check
+    if (!currentUser) {
+        throw new AppError(
+            "Authentication required",
+            401
+        );
+    }
+
+    // 2. Find workstation center
+    const center = await WorkstationCenter.findOne({
+        centerId
+    });
+
+    if (!center) {
+        throw new AppError(
+            "Workstation center not found",
+            404
+        );
+    }
+
+    // 3. Workstation Head can only view
+    //    eligible employees for their own center
+    if (
+        currentUser.role === "WORKSTATION_HEAD" &&
+        (
+            !center.head ||
+            center.head.toString() !==
+            currentUser._id.toString()
+        )
+    ) {
+        throw new AppError(
+            "You can only access employees from your own center",
+            403
+        );
+    }
+
+    // 4. Only ADMIN and WORKSTATION_HEAD
+    //    should reach this service
+    if (
+        currentUser.role !== "ADMIN" &&
+        currentUser.role !== "WORKSTATION_HEAD"
+    ) {
+        throw new AppError(
+            "You are not authorized to view eligible employees",
+            403
+        );
+    }
+
+    // 5. Find employees who can actually
+    //    be assigned to this center
+    const employees = await User.find({
+        role: "WORKSTATION_EMPLOYEE",
+        status: "ACTIVE",
+        workstationCenter: null
+    })
+        .select(
+            "_id name email role status workstationCenter"
+        )
+        .sort({
+            name: 1
+        });
+
+    return employees;
+};
+
 module.exports = {
     createWorkstationCenter,
     getWorkstationCenterById,
     assignEmployees,
     getActiveWorkstationCenters,
-    getMyWorkstationCenter
+    getMyWorkstationCenter,
+    getEligibleEmployees
 };
 

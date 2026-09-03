@@ -71,15 +71,16 @@ DeviceDetailsPage::DeviceDetailsPage(
     , deviceTypeValueLabel_(nullptr)
     , classificationStatusLabel_(nullptr)
     , safetyStatusLabel_(nullptr)
+    , safetyDescriptionLabel_(nullptr)
 {
     setupUi();
 }
 
 
 /*
- * =============================================================
+ *  
  * Main UI
- * =============================================================
+ *  
  */
 
 void DeviceDetailsPage::setupUi()
@@ -333,9 +334,9 @@ void DeviceDetailsPage::setupUi()
 
 
 /*
- * =============================================================
+ *  
  * Device Header
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createDeviceHeader()
@@ -685,9 +686,9 @@ QWidget *DeviceDetailsPage::createDeviceHeader()
 
 
 /*
- * =============================================================
+ *  
  * Classification Card
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createClassificationCard(
@@ -823,9 +824,9 @@ QWidget *DeviceDetailsPage::createClassificationCard(
 
 
 /*
- * =============================================================
+ *  
  * System Status Card
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createSystemStatusCard(
@@ -955,9 +956,9 @@ QWidget *DeviceDetailsPage::createSystemStatusCard(
 
 
 /*
- * =============================================================
+ *  
  * Safety Card
- * =============================================================
+ *  
  */
 
 QWidget *DeviceDetailsPage::createSafetyCard()
@@ -1018,7 +1019,7 @@ QWidget *DeviceDetailsPage::createSafetyCard()
     );
 
 
-    QLabel *description =
+    safetyDescriptionLabel_ =
         new QLabel(
             "The device has been discovered and classified. "
             "Detailed safety checks will be connected to the "
@@ -1026,18 +1027,18 @@ QWidget *DeviceDetailsPage::createSafetyCard()
             card
         );
 
-    description->setWordWrap(
+    safetyDescriptionLabel_->setWordWrap(
         true
     );
 
-    description->setStyleSheet(
+    safetyDescriptionLabel_->setStyleSheet(
         "color: #667085;"
         "font-size: 12px;"
     );
 
 
     layout->addWidget(
-        description
+        safetyDescriptionLabel_
     );
 
 
@@ -1080,15 +1081,15 @@ QWidget *DeviceDetailsPage::createSafetyCard()
         checksLayout
     );
 
-
+    setSafetyPending();
     return card;
 }
 
 
 /*
- * =============================================================
+ *  
  * Helpers
- * =============================================================
+ *  
  */
 
 QFrame *DeviceDetailsPage::createCard()
@@ -1164,9 +1165,9 @@ QLabel *DeviceDetailsPage::createValueLabel(
 
 
 /*
- * =============================================================
+ *  
  * Formatting
- * =============================================================
+ *  
  */
 
 QString DeviceDetailsPage::formatCapacity(
@@ -1276,4 +1277,106 @@ QString DeviceDetailsPage::deviceTypeText(
         default:
             return "Unknown";
     }
+}
+
+void DeviceDetailsPage::setSafetyPending()
+{
+    if (!safetyStatusLabel_)
+    {
+        return;
+    }
+
+    safetyStatusLabel_->setText(
+        "Assessment Pending"
+    );
+
+    safetyStatusLabel_->setStyleSheet(
+        "QLabel {"
+        "color: #B45309;"
+        "font-size: 12px;"
+        "font-weight: 600;"
+        "}"
+    );
+
+
+    if (safetyDescriptionLabel_)
+    {
+        safetyDescriptionLabel_->setText(
+            "Safety assessment has not been completed yet."
+        );
+    }
+}
+
+
+void DeviceDetailsPage::setSafetyPassed()
+{
+    if (!safetyStatusLabel_)
+    {
+        return;
+    }
+
+    safetyStatusLabel_->setText(
+        "Safety Checks Passed"
+    );
+
+    safetyStatusLabel_->setStyleSheet(
+        "QLabel {"
+        "color: #15803D;"
+        "font-size: 12px;"
+        "font-weight: 600;"
+        "}"
+    );
+
+
+    if (safetyDescriptionLabel_)
+    {
+        safetyDescriptionLabel_->setText(
+            "The device passed the required safety checks."
+        );
+    }
+}
+
+
+void DeviceDetailsPage::setSafetyFailed(
+    const QString &message)
+{
+    if (!safetyStatusLabel_)
+    {
+        return;
+    }
+
+    safetyStatusLabel_->setText(
+        "Sanitization Blocked"
+    );
+
+    safetyStatusLabel_->setStyleSheet(
+        "QLabel {"
+        "color: #B42318;"
+        "font-size: 12px;"
+        "font-weight: 600;"
+        "}"
+    );
+
+
+    if (safetyDescriptionLabel_)
+    {
+        safetyDescriptionLabel_->setText(
+            message.isEmpty()
+                ? "The device did not pass the required safety checks."
+                : message
+        );
+    }
+}
+
+void DeviceDetailsPage::updateSafetyStatus(
+    bool passed,
+    const QString &message)
+{
+    if (passed)
+    {
+        setSafetyPassed();
+        return;
+    }
+
+    setSafetyFailed(message);
 }

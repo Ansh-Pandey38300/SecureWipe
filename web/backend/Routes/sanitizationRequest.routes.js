@@ -90,6 +90,28 @@ router.patch(
     controller.updateSanitizationRequestStatus
 );
 
+/*
+ * WORKSTATION EMPLOYEE
+ * Get sanitization requests assigned
+ * to the logged-in employee
+ */
+router.get(
+    "/employee",
+    Authenticate,
+    Authorize(
+        "WORKSTATION_EMPLOYEE"
+    ),
+    controller.getEmployeeSanitizationRequests
+);
+
+router.patch(
+    "/:requestId/employee-status",
+    Authenticate,
+    Authorize(
+        "WORKSTATION_EMPLOYEE"
+    ),
+    controller.updateEmployeeSanitizationStatus
+);
 
 /*
  * ADMIN

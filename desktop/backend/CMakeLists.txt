@@ -10,11 +10,18 @@ add_library(
 
     safety/src/BootInfo.cpp
     safety/src/WindowsBootChecker.cpp
-
     safety/src/WindowsStorageUtils.cpp
     safety/src/SafetyEngine.cpp
 
     sanitization/src/SanitizationEngine.cpp
+    sanitization/src/SanitizationCapability.cpp
+    sanitization/src/ScsiCapability.cpp
+    sanitization/src/StoragePropertyCapability.cpp
+    sanitization/src/NvmeCapability.cpp
+    sanitization/src/NvmeSanitizer.cpp
+
+    forensic/evidence/src/EvidenceCollector.cpp
+
 )
 
 target_include_directories(
@@ -25,6 +32,7 @@ target_include_directories(
     classification/include
     safety/include
     sanitization/include
+    forensic/evidence/include
 )
 
 if(WIN32)
@@ -71,6 +79,21 @@ add_executable(
     tests/SanitizationEngineTest.cpp
 )
 
+add_executable(
+   SanitizationCapabilityTest
+    tests/SanitizationCapabilityTest.cpp
+)
+
+add_executable(
+   NvmeCapabilityTest
+   tests/NvmeCapabilityTest.cpp
+)
+
+add_executable(
+   EvidenceCollectorTest
+   tests/forensic/evidence/EvidenceCollectorTest.cpp
+)
+
 set(STORAGE_TESTS
     StorageDeviceTest
     StorageManagerTest
@@ -79,6 +102,9 @@ set(STORAGE_TESTS
     WindowsBootCheckerTest
     SafetyEngineTest
     SanitizationEngineTest
+    SanitizationCapabilityTest
+    NvmeCapabilityTest
+    EvidenceCollectorTest
 )
 
 foreach(TEST_TARGET IN LISTS STORAGE_TESTS)

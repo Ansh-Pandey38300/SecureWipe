@@ -10,6 +10,8 @@ const {
     updateSanitizationRequestStatus,
     assignSanitizationRequest,
     getAllHeadSanitizationRequests,
+    getEmployeeSanitizationRequests,
+    updateEmployeeSanitizationStatus,
 } = require(
     "../services/sanitizationRequest.services"
 );
@@ -204,6 +206,52 @@ module.exports.getAllHeadSanitizationRequests =
                 success: true,
 
                 data: requests,
+            });
+        }
+    );
+
+module.exports.getEmployeeSanitizationRequests =
+    asyncHandler(
+        async (req, res) => {
+
+            const requests =
+                await getEmployeeSanitizationRequests(
+                    req.user
+                );
+
+            res.status(200).json({
+                success: true,
+
+                message:
+                    "Assigned sanitization requests fetched successfully",
+
+                data: requests,
+            });
+        }
+    );
+
+module.exports.updateEmployeeSanitizationStatus =
+    asyncHandler(
+        async (req, res) => {
+
+            const { requestId } =
+                req.params;
+
+            const { status } =
+                req.body;
+
+            const request =
+                await updateEmployeeSanitizationStatus(
+                    requestId,
+                    status,
+                    req.user
+                );
+
+            res.status(200).json({
+                success: true,
+                message:
+                    "Employee request status updated successfully",
+                data: request,
             });
         }
     );

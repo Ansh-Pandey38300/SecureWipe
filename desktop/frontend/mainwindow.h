@@ -16,6 +16,7 @@ class AuthManager;
 class DeviceController;
 class DeviceTableModel;
 class DeviceDetailsPage;
+class SanitizationRequestService;
 
 class MainWindow : public QMainWindow
 {
@@ -26,9 +27,13 @@ public:
     ~MainWindow() override;
 
 private:
+    QString selectedRequestId;
+    QString selectedRequestDeviceType;
+    QString selectedRequestMethod;
     Ui::MainWindow *ui;
 
     AuthManager *authManager;
+    SanitizationRequestService *sanitizationRequestService;
 
     DeviceController *deviceController;
     DeviceTableModel *deviceTableModel;

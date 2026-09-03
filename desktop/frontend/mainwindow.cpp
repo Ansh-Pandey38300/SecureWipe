@@ -7,6 +7,7 @@
 #include "pages/DeviceDetailsPage.h"
 
 #include "ui_mainwindow.h"
+#include "services/SanitizationRequestService.h"
 
 #include <QHeaderView>
 #include <QHBoxLayout>
@@ -17,6 +18,10 @@
 #include <QVBoxLayout>
 #include <QComboBox>
 #include <QLabel>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QTableWidgetItem>
 
 #include "styles/AppTheme.h"
 #include <QLayout>
@@ -26,12 +31,53 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , authManager(new AuthManager(this))
+    , sanitizationRequestService(
+      new SanitizationRequestService(this))
     , deviceController(new DeviceController(this))
     , deviceTableModel(new DeviceTableModel(this))
     , deviceDetailsPage(nullptr)
     , refreshDevicesButton(nullptr)
 {
     ui->setupUi(this);
+    ui->recentJobsTable->setHorizontalHeaderLabels({
+    QStringLiteral("Request ID"),
+    QStringLiteral("Device"),
+    QStringLiteral("Method"),
+    QStringLiteral("Status")
+    });
+    ui->recentJobsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->recentJobsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->recentJobsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    connect(
+    ui->recentJobsTable,
+    &QTableWidget::itemSelectionChanged,
+    this,
+    [this]()
+    {
+        const int row = ui->recentJobsTable->currentRow();
+
+        if (row < 0)
+        {
+            selectedRequestId.clear();
+            selectedRequestDeviceType.clear();
+            selectedRequestMethod.clear();
+            return;
+        }
+
+        selectedRequestId = ui->recentJobsTable->item(row, 0)
+                                ? ui->recentJobsTable->item(row, 0)->text()
+                                : QString();
+
+        selectedRequestDeviceType = ui->recentJobsTable->item(row, 1)
+                                        ? ui->recentJobsTable->item(row, 1)->text()
+                                        : QString();
+
+        selectedRequestMethod = ui->recentJobsTable->item(row, 2)
+                                   ? ui->recentJobsTable->item(row, 2)->text()
+                                   : QString();
+    }
+);
 
     /*
      * The .ui file contains old dark-theme styles.
@@ -65,30 +111,40 @@ MainWindow::MainWindow(QWidget *parent)
      */
 
     connect(
-        authManager,
-        &AuthManager::loginSuccessful,
-        this,
-        [this]()
-        {
-            ui->stackedWidget->setCurrentWidget(
-                ui->appPage
-            );
+    authManager,
+    &AuthManager::loginSuccessful,
+    this,
+    [this]()
+    {
+        ui->stackedWidget->setCurrentWidget(
+            ui->appPage
+        );
 
-            ui->contentStack->setCurrentWidget(
-                ui->dashboardPage
-            );
+        ui->contentStack->setCurrentWidget(
+            ui->dashboardPage
+        );
 
-            setActiveNavButton(
-                ui->dashboardNavButton
-            );
+        setActiveNavButton(
+            ui->dashboardNavButton
+        );
 
-            /*
-             * Discover physical storage devices after
-             * successful login.
-             */
-            refreshDevices();
-        }
+        /*
+         * Fetch requests assigned to the
+         * currently logged-in employee.
+         */
+
+        sanitizationRequestService
+    ->fetchAssignedRequests(
+        authManager->token()
     );
+
+        /*
+         * Discover physical storage devices
+         * after successful login.
+         */
+        refreshDevices();
+    }
+);
 
 
     connect(
@@ -203,20 +259,36 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     connect(
-        ui->wipeNavButton,
-        &QPushButton::clicked,
-        this,
-        [this]()
-        {
-            ui->contentStack->setCurrentWidget(
-                ui->wipePage
-            );
+    ui->wipeNavButton,
+    &QPushButton::clicked,
+    this,
+    [this]()
+    {
+        ui->contentStack->setCurrentWidget(
+            ui->wipePage
+        );
 
-            setActiveNavButton(
-                ui->wipeNavButton
+        setActiveNavButton(
+            ui->wipeNavButton
+        );
+
+        if (selectedRequestId.isEmpty())
+        {
+            ui->statusLabel->setText(
+                QStringLiteral("Select an assigned request from Dashboard before sanitization.")
             );
         }
-    );
+        else
+        {
+            ui->statusLabel->setText(
+                QStringLiteral("Request: %1 | Device: %2 | Method: %3")
+                    .arg(selectedRequestId)
+                    .arg(selectedRequestDeviceType)
+                    .arg(selectedRequestMethod)
+            );
+        }
+    }
+);
 
 
     connect(
@@ -317,6 +389,178 @@ MainWindow::MainWindow(QWidget *parent)
         }
     );
 
+    connect(
+    deviceController,
+    &DeviceController::safetyCheckPassed,
+    this,
+    [this]()
+    {
+        if (!deviceDetailsPage)
+        {
+            return;
+        }
+
+        deviceDetailsPage->updateSafetyStatus(
+            true
+        );
+    }
+);
+
+
+    connect(
+        deviceController,
+        &DeviceController::safetyCheckFailed,
+        this,
+        [this](const QString &message)
+        {
+            if (!deviceDetailsPage)
+            {
+                return;
+            }
+
+            deviceDetailsPage->updateSafetyStatus(
+                false,
+                message
+            );
+        }
+    );
+
+    connect(
+    sanitizationRequestService,
+    &SanitizationRequestService::assignedRequestsFetched,
+    this,
+    [this](const QJsonArray &requests)
+    {
+        int totalCount = requests.size();
+        int completedCount = 0;
+        int failedCount = 0;
+        int inProgressCount = 0;
+        ui->recentJobsTable->setRowCount(
+            0
+        );
+
+        for (const QJsonValue &value : requests)
+        {
+            if (!value.isObject())
+            {
+                continue;
+            }
+
+            const QJsonObject request =
+                value.toObject();
+
+            const int row =
+                ui->recentJobsTable->rowCount();
+
+            ui->recentJobsTable->insertRow(
+                row
+            );
+
+            const QString requestId =
+                request.value(
+                    QStringLiteral("requestId")
+                ).toString();
+
+            const QString deviceType =
+                request.value(
+                    QStringLiteral("deviceType")
+                ).toString();
+
+            const QString method =
+                request.value(
+                    QStringLiteral("sanitizationMethod")
+                ).toString();
+
+            const QString status =
+                request.value(
+                    QStringLiteral("status")
+                ).toString();
+            
+            if (status == QStringLiteral("COMPLETED"))
+{
+    completedCount++;
+}
+else if (status == QStringLiteral("FAILED"))
+{
+    failedCount++;
+}
+else if (status == QStringLiteral("IN_PROGRESS"))
+{
+    inProgressCount++;
+}
+
+            ui->recentJobsTable->setItem(
+                row,
+                0,
+                new QTableWidgetItem(
+                    requestId
+                )
+            );
+
+            ui->recentJobsTable->setItem(
+                row,
+                1,
+                new QTableWidgetItem(
+                    deviceType
+                )
+            );
+
+            ui->recentJobsTable->setItem(
+                row,
+                2,
+                new QTableWidgetItem(
+                    method
+                )
+            );
+
+            ui->recentJobsTable->setItem(
+                row,
+                3,
+                new QTableWidgetItem(
+                    status
+                )
+            );
+        }
+
+        ui->totalJobsValue->setText(
+    QString::number(totalCount)
+);
+
+ui->completedJobsValue->setText(
+    QString::number(completedCount)
+);
+
+ui->failedJobsValue->setText(
+    QString::number(failedCount)
+);
+
+ui->inProgressValue->setText(
+    QString::number(inProgressCount)
+);
+
+        ui->recentJobsTable
+            ->resizeColumnsToContents();
+    }
+);
+
+    connect(
+        sanitizationRequestService,
+        &SanitizationRequestService::requestFetchFailed,
+        this,
+        [this](const QString &message)
+        {
+            ui->recentJobsTable->setRowCount(
+                0
+                );
+
+            QMessageBox::warning(
+                this,
+                QStringLiteral("Assigned Requests"),
+                message
+                );
+        }
+);
+
 
     /*
      * ---------------------------------------------------------
@@ -352,11 +596,22 @@ MainWindow::MainWindow(QWidget *parent)
 
             ui->statusLabel->setText(
                 QStringLiteral(
-                    "Target device selected."
-                )
-            );
+                "Target device selected."
+            )
+);
+
+    const bool requestSelected =
+        !selectedRequestId.isEmpty();
+
+    const bool deviceSelected =
+        ui->deviceComboBox->currentIndex() >= 0;
+
+    ui->startWipeButton->setEnabled(
+        requestSelected && deviceSelected
+    );
         }
     );
+    ui->startWipeButton->setEnabled(false);
 
 
     /*
@@ -879,7 +1134,6 @@ void MainWindow::showDevicesPage()
     ui->contentStack->setCurrentWidget(
         ui->devicesPage
     );
-
     setActiveNavButton(
         ui->devicesNavButton
     );

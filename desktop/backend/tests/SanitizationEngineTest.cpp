@@ -1,116 +1,171 @@
 #include <iostream>
+#include <vector>
 
-#include "SanitizationEngine.h"
-#include "SafetyResult.h"
 #include "StorageDevice.h"
+#include "WindowsStorageDiscovery.h"
+#include "SafetyEngine.h"
+#include "SafetyResult.h"
+#include "SanitizationEngine.h"
 
 int main()
 {
     std::cout
         << "========================================\n"
-        << "   SecureWipe SanitizationEngine Test\n"
-        << "========================================\n\n";
+        << " SecureWipe Sanitization Engine Test\n"
+        << "========================================\n";
 
-    StorageDevice testDevice(
-        "\\\\.\\PhysicalDrive1",
-        "Test USB Drive",
-        "TEST-SERIAL-001",
-        64000000000ULL,
-        "USB",
-        false,
-        true,
-        false
-    );
+    WindowsStorageDiscovery discovery;
+
+    std::vector<StorageDevice> devices =
+        discovery.discover();
+
+    if (devices.empty())
+    {
+        std::cout
+            << "\nNo storage devices detected.\n";
+
+        return 1;
+    }
+
+    std::cout
+        << "\nDetected Devices: "
+        << devices.size()
+        << '\n';
+
+    SafetyEngine safetyEngine;
 
     SanitizationEngine sanitizationEngine;
 
-    // Test 1: SAFE SafetyResult
-    SafetyResult safeResult;
+    for (std::size_t i = 0; i < devices.size(); ++i)
+    {
+        const StorageDevice& device = devices[i];
 
-    safeResult.isOverallSafe = true;
-    safeResult.decision = "SAFE";
-    safeResult.summary =
-        "All safety checks passed.";
+        std::cout
+            << "\n----------------------------------------\n"
+            << "Device "
+            << i + 1
+            << '\n'
+            << "----------------------------------------\n";
 
-    bool safeGate =
-        sanitizationEngine.canSanitize(
-            testDevice,
-            safeResult);
+        std::cout
+            << "Device ID : "
+            << device.getDeviceId()
+            << '\n';
 
-    std::cout
-        << "[TEST 1] SAFE Safety Result\n"
-        << "Expected : ALLOWED\n"
-        << "Actual   : "
-        << (safeGate ? "ALLOWED" : "BLOCKED")
-        << "\n"
-        << "Status   : "
-        << (safeGate ? "PASS" : "FAIL")
-        << "\n\n";
+        std::cout
+            << "Model     : "
+            << device.getModel()
+            << '\n';
 
+        std::cout
+            << "Serial    : "
+            << device.getSerialNumber()
+            << '\n';
 
-    // Test 2: BLOCKED SafetyResult
-    SafetyResult blockedResult;
+        std::cout
+            << "Interface : "
+            << device.getInterfaceType()
+            << '\n';
 
-    blockedResult.isOverallSafe = false;
-    blockedResult.decision = "BLOCKED";
-    blockedResult.summary =
-        "One or more safety checks failed.";
+        if (device.getInterfaceType() != "NVMe")
+        {
+            std::cout
+                << "\nSkipping non-NVMe device.\n";
 
-    bool blockedGate =
-        sanitizationEngine.canSanitize(
-            testDevice,
-            blockedResult);
+            continue;
+        }
 
-    std::cout
-        << "[TEST 2] BLOCKED Safety Result\n"
-        << "Expected : BLOCKED\n"
-        << "Actual   : "
-        << (blockedGate ? "ALLOWED" : "BLOCKED")
-        << "\n"
-        << "Status   : "
-        << (!blockedGate ? "PASS" : "FAIL")
-        << "\n\n";
+         
+        // STEP 1: Set the device selected by the user
+         
 
+        std::cout
+            << "\n[1] Setting expected target...\n";
 
-    // Test 3: SAFE result must reach sanitization stage,
-    // but actual sanitization is not implemented yet.
-    bool executionResult =
-        sanitizationEngine.sanitize(
-            testDevice,
-            safeResult);
+        safetyEngine.setExpectedTarget(device);
 
-    std::cout
-        << "[TEST 3] Sanitization Execution\n"
-        << "Expected : NOT EXECUTED YET\n"
-        << "Actual   : "
-        << (executionResult ? "EXECUTED" : "NOT EXECUTED")
-        << "\n"
-        << "Status   : "
-        << (!executionResult ? "PASS" : "FAIL")
-        << "\n\n";
+        std::cout
+            << "Expected target set successfully.\n";
 
+         
+        // STEP 2: Run Safety Engine
+         
 
-    // Test 4: BLOCKED result must never reach execution.
-    bool blockedExecution =
-        sanitizationEngine.sanitize(
-            testDevice,
-            blockedResult);
+        std::cout
+            << "\n[2] Running Safety Engine...\n";
 
-    std::cout
-        << "[TEST 4] Blocked Target Execution\n"
-        << "Expected : NOT EXECUTED\n"
-        << "Actual   : "
-        << (blockedExecution ? "EXECUTED" : "NOT EXECUTED")
-        << "\n"
-        << "Status   : "
-        << (!blockedExecution ? "PASS" : "FAIL")
-        << "\n\n";
+        SafetyResult safetyResult =
+            safetyEngine.evaluateWithResult(device);
 
+        std::cout
+            << "\nSafety Decision: "
+            << safetyResult.decision
+            << '\n';
 
-    std::cout
-        << "========================================\n"
-        << "       SANITIZATION ENGINE TEST\n"
-        << "========================================\n";
+        std::cout
+            << "Safety Summary: "
+            << safetyResult.summary
+            << '\n';
+
+         
+        // Display individual safety checks
+         
+
+        std::cout
+            << "\nSafety Checks\n"
+            << "-------------\n";
+
+        for (const auto& check : safetyResult.checks)
+        {
+            std::cout
+                << check.checkName
+                << " : "
+                << (check.passed ? "PASS" : "FAIL")
+                << '\n';
+
+            std::cout
+                << "  "
+                << check.message
+                << '\n';
+        }
+
+         
+        // STEP 3: Stop if safety checks fail
+         
+
+        if (!safetyResult.isOverallSafe)
+        {
+            std::cout
+                << "\nSanitization BLOCKED by Safety Engine.\n";
+
+            continue;
+        }
+
+        std::cout
+            << "\nSafety validation PASSED.\n";
+
+         
+        // STEP 4: Start Sanitization Engine
+         
+
+        std::cout
+            << "\n[3] Starting Sanitization Engine...\n";
+
+        bool result =
+            sanitizationEngine.sanitize(
+                device,
+                safetyResult);
+
+         
+        // STEP 5: Final result
+         
+
+        std::cout
+            << "\n========================================\n"
+            << " Sanitization Test Result: "
+            << (result ? "PASS" : "FAIL")
+            << "\n========================================\n";
+    }
 
     return 0;
 }
