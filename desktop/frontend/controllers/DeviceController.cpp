@@ -1,6 +1,7 @@
 #include "DeviceController.h"
 
 #include "../services/StorageService.h"
+#include "../../backend/sanitization/include/SanitizationCapability.h"
 
 
 DeviceController::DeviceController(
@@ -18,6 +19,20 @@ const std::vector<StorageDevice> &
 DeviceController::devices() const
 {
     return devices_;
+}
+
+
+const SafetyResult &
+DeviceController::lastSafetyResult() const
+{
+    return lastSafetyResult_;
+}
+
+
+const std::optional<StorageDevice> &
+DeviceController::selectedTarget() const
+{
+    return selectedTarget_;
 }
 
 
@@ -51,6 +66,23 @@ bool DeviceController::selectTarget(
         *selectedTarget_);
 
     return true;
+}
+
+
+// ============================================================
+// Sanitization Capability
+// ============================================================
+
+SanitizationCapability
+DeviceController::detectSelectedTargetCapability() const
+{
+    if (!selectedTarget_.has_value())
+    {
+        return SanitizationCapability{};
+    }
+
+    return detectSanitizationCapability(
+        *selectedTarget_);
 }
 
 
