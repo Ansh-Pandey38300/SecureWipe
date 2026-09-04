@@ -1,6 +1,7 @@
 #include "SanitizationCapability.h"
 #include "StorageDevice.h"
 #include "NvmeCapability.h"
+#include "AtaCapability.h"
 #include <Windows.h>
 #include <winioctl.h>
 #include <ntddscsi.h>
@@ -10,9 +11,7 @@
 #include <iostream>
 #include <string>
 
- 
 // SCSI INQUIRY Request
- 
 
 struct ScsiInquiryRequest
 {
@@ -25,9 +24,7 @@ struct ScsiInquiryRequest
     UCHAR dataBuffer[96];
 };
 
- 
 // Decode fixed-width SCSI text
- 
 
 static std::string decodeScsiText(
     const UCHAR *buffer,
@@ -57,9 +54,7 @@ static std::string decodeScsiText(
     return result;
 }
 
- 
 // Decode SCSI INQUIRY response
- 
 
 static void decodeInquiryResponse(
     const UCHAR *dataBuffer)
@@ -139,14 +134,12 @@ static void decodeInquiryResponse(
         << '\n';
 }
 
- 
 // Query Windows Storage Properties
 //
 // Purpose:
 // Determine how Windows exposes the storage device.
 //
 // This does NOT perform sanitization.
- 
 
 static bool queryStorageProperties(
     HANDLE deviceHandle)
@@ -327,9 +320,7 @@ static bool queryStorageProperties(
     return true;
 }
 
- 
 // Print SCSI Sense Data
- 
 
 static void printSenseData(
     const UCHAR *senseBuffer,
@@ -491,9 +482,7 @@ static void printSenseData(
         << '\n';
 }
 
- 
 // SCSI INQUIRY
- 
 
 static bool testScsiPassThrough(
     HANDLE deviceHandle)
@@ -719,6 +708,21 @@ SanitizationCapability detectSanitizationCapability(const StorageDevice &device)
     // Other interface
     // --------------------------------------------------------
 
+    else if (device.getInterfaceType() == "SATA")
+    {
+        AtaCapability ata = detectAtaCapability(device);
+
+        capability.ataIdentifyAvailable = ata.identifyAvailable;
+        capability.ataSecuritySupported = ata.securitySupported;
+        capability.ataEnhancedEraseSupported = ata.enhancedEraseSupported;
+        capability.ataSecurityEnabled = ata.securityEnabled;
+        capability.ataSecurityLocked = ata.securityLocked;
+        capability.ataSecurityFrozen = ata.securityFrozen;
+        capability.atasanitizeSupported = ata.sanitizeSupported;
+        capability.atacryptoScrambleSupported = ata.cryptoScrambleSupported;
+        capability.atablockEraseSupported = ata.blockEraseSupported;
+        capability.ataoverwriteSupported = ata.overwriteSupported;
+    }
     else
     {
         std::cout << "\nNo protocol-specific capability "

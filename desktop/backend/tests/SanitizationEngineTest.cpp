@@ -33,7 +33,6 @@ int main()
         << '\n';
 
     SafetyEngine safetyEngine;
-
     SanitizationEngine sanitizationEngine;
 
     for (std::size_t i = 0; i < devices.size(); ++i)
@@ -67,17 +66,55 @@ int main()
             << device.getInterfaceType()
             << '\n';
 
-        if (device.getInterfaceType() != "NVMe")
+        std::cout
+            << "Capacity  : "
+            << device.getCapacityBytes()
+            << " bytes\n";
+
+        std::cout
+            << "System Disk : "
+            << (device.isSystemDisk() ? "YES" : "NO")
+            << '\n';
+
+        std::cout
+            << "Removable : "
+            << (device.isRemovable() ? "YES" : "NO")
+            << '\n';
+
+        // --------------------------------------------------
+        // STEP 1: Only supported interfaces are tested
+        // --------------------------------------------------
+
+        const std::string interfaceType =
+            device.getInterfaceType();
+
+        if (interfaceType != "NVMe" &&
+            interfaceType != "SATA" &&
+            interfaceType != "USB")
         {
             std::cout
-                << "\nSkipping non-NVMe device.\n";
+                << "\nSkipping unsupported interface: "
+                << interfaceType
+                << '\n';
 
             continue;
         }
 
-         
-        // STEP 1: Set the device selected by the user
-         
+        // --------------------------------------------------
+        // STEP 2: Never sanitize system disk
+        // --------------------------------------------------
+
+        if (device.isSystemDisk())
+        {
+            std::cout
+                << "\nSkipping SYSTEM DISK for safety.\n";
+
+            continue;
+        }
+
+        // --------------------------------------------------
+        // STEP 3: Set expected target
+        // --------------------------------------------------
 
         std::cout
             << "\n[1] Setting expected target...\n";
@@ -87,9 +124,9 @@ int main()
         std::cout
             << "Expected target set successfully.\n";
 
-         
-        // STEP 2: Run Safety Engine
-         
+        // --------------------------------------------------
+        // STEP 4: Run Safety Engine
+        // --------------------------------------------------
 
         std::cout
             << "\n[2] Running Safety Engine...\n";
@@ -107,9 +144,9 @@ int main()
             << safetyResult.summary
             << '\n';
 
-         
+        // --------------------------------------------------
         // Display individual safety checks
-         
+        // --------------------------------------------------
 
         std::cout
             << "\nSafety Checks\n"
@@ -129,9 +166,9 @@ int main()
                 << '\n';
         }
 
-         
-        // STEP 3: Stop if safety checks fail
-         
+        // --------------------------------------------------
+        // STEP 5: Stop if safety fails
+        // --------------------------------------------------
 
         if (!safetyResult.isOverallSafe)
         {
@@ -144,9 +181,9 @@ int main()
         std::cout
             << "\nSafety validation PASSED.\n";
 
-         
-        // STEP 4: Start Sanitization Engine
-         
+        // --------------------------------------------------
+        // STEP 6: Start Sanitization Engine
+        // --------------------------------------------------
 
         std::cout
             << "\n[3] Starting Sanitization Engine...\n";
@@ -156,9 +193,9 @@ int main()
                 device,
                 safetyResult);
 
-         
-        // STEP 5: Final result
-         
+        // --------------------------------------------------
+        // STEP 7: Final result
+        // --------------------------------------------------
 
         std::cout
             << "\n========================================\n"

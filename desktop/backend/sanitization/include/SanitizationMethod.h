@@ -2,7 +2,8 @@
 
 enum class SanitizationMethod
 {
-    NativeDeviceSanitize,
+    NvmeSanitize,
+    AtaSanitize,
     HostOverwrite,
     Unsupported
 };

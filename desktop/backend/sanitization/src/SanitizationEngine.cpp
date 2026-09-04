@@ -1,5 +1,7 @@
 #include "SanitizationEngine.h"
 #include "NvmeSanitizer.h"
+#include "HostOverwriteSanitizer.h"
+#include "AtaSanitizer.h"
 
 #include <iostream>
 
@@ -7,38 +9,45 @@ bool SanitizationEngine::performOverwrite(
     HANDLE deviceHandle,
     std::uint64_t totalBytes)
 {
-    if (deviceHandle == INVALID_HANDLE_VALUE)
+    if (deviceHandle == INVALID_HANDLE_VALUE || totalBytes == 0)
         return false;
 
-    if (totalBytes == 0)
-        return false;
-
-    std::cout
-        << "Sanitization target opened successfully.\n";
-
-    std::cout
-        << "Target size: "
-        << totalBytes
-        << " bytes\n";
-
-    std::cout
-        << "Host overwrite is not implemented yet.\n";
-
-    return false;
+    HostOverwriteSanitizer sanitizer;
+    return sanitizer.sanitize(deviceHandle, totalBytes);
 }
 
-SanitizationMethod SanitizationEngine::selectMethod(
-    const SanitizationCapability& capability) const
+SanitizationMethod SanitizationEngine::selectMethod(const StorageDevice &device, const SanitizationCapability &capability) const
 {
-    if (capability.nativeSanitizeSupported ==
-        NativeSanitizeSupport::SUPPORTED)
+    if (device.getInterfaceType() == "NVMe")
     {
-        return SanitizationMethod::
-            NativeDeviceSanitize;
+        if (capability.nvmeIdentifyAvailable &&
+            capability.nativeSanitizeSupported == NativeSanitizeSupport::SUPPORTED)
+        {
+            return SanitizationMethod::NvmeSanitize;
+        }
+
+        return SanitizationMethod::Unsupported;
     }
 
-    if (capability.isUsbDevice &&
-        capability.scsiPathAvailable)
+    else if (device.getInterfaceType() == "SATA")
+    {
+        if (capability.ataIdentifyAvailable)
+        {
+            std::cout << "ATA capability detected.\n";
+
+            if (capability.atasanitizeSupported)
+            {
+                std::cout << "ATA SANITIZE supported.\n";
+                return SanitizationMethod::AtaSanitize;
+            }
+
+            std::cout << "ATA SANITIZE not supported.\n";
+        }
+
+        return SanitizationMethod::HostOverwrite;
+    }
+
+    else if (capability.isUsbDevice && capability.scsiPathAvailable)
     {
         return SanitizationMethod::HostOverwrite;
     }
@@ -47,31 +56,24 @@ SanitizationMethod SanitizationEngine::selectMethod(
 }
 
 bool SanitizationEngine::canSanitize(
-    const StorageDevice& device,
-    const SafetyResult& safetyResult)
+    const StorageDevice &device,
+    const SafetyResult &safetyResult)
 {
     if (!safetyResult.isOverallSafe)
     {
-        std::cout
-            << "Safety Engine rejected "
-               "the device.\n";
-
+        std::cout << "Safety Engine rejected the device.\n";
         return false;
     }
 
     if (device.getDeviceId().empty())
     {
-        std::cout
-            << "Device ID is missing.\n";
-
+        std::cout << "Device ID is missing.\n";
         return false;
     }
 
     if (device.getCapacityBytes() == 0)
     {
-        std::cout
-            << "Device capacity is unknown.\n";
-
+        std::cout << "Device capacity is unknown.\n";
         return false;
     }
 
@@ -79,96 +81,86 @@ bool SanitizationEngine::canSanitize(
 }
 
 bool SanitizationEngine::sanitize(
-    const StorageDevice& device,
-    const SafetyResult& safetyResult)
+    const StorageDevice &device,
+    const SafetyResult &safetyResult)
 {
     std::cout
         << "\n========================================\n"
         << " Sanitization Engine\n"
         << "========================================\n";
 
-    std::cout
-        << "\n[1] Safety validation\n";
+    // --------------------------------------------------
+    // STEP 1: SAFETY
+    // --------------------------------------------------
 
-    if (!canSanitize(
-            device,
-            safetyResult))
+    std::cout << "\n[1] Safety validation\n";
+
+    if (!canSanitize(device, safetyResult))
     {
         std::cout
-            << "Device failed sanitization "
-               "safety checks.\n";
+            << "Device failed sanitization safety checks.\n";
 
         return false;
     }
 
-    std::cout
-        << "Safety validation PASSED.\n";
+    std::cout << "Safety validation PASSED.\n";
 
-    std::cout
-        << "\n[2] Detecting sanitization "
-           "capability\n";
+    // --------------------------------------------------
+    // STEP 2: CAPABILITY DETECTION
+    // --------------------------------------------------
 
-    SanitizationCapability capability =
-        detectSanitizationCapability(
-            device);
+    std::cout << "\n[2] Detecting sanitization capability\n";
 
-    std::cout
-        << "\n[3] Selecting sanitization method\n";
+    SanitizationCapability capability = detectSanitizationCapability(device);
 
-    SanitizationMethod method =
-        selectMethod(capability);
+    // --------------------------------------------------
+    // STEP 3: METHOD SELECTION
+    // --------------------------------------------------
+
+    std::cout << "\n[3] Selecting sanitization method\n";
+
+    SanitizationMethod method = selectMethod(device, capability);
 
     switch (method)
     {
-    case SanitizationMethod::
-        NativeDeviceSanitize:
-
-        std::cout
-            << "Selected method: "
-               "Native Device Sanitize\n";
-
+    case SanitizationMethod::NvmeSanitize:
+        std::cout << "Selected method: NVMe Sanitize\n";
         break;
 
-    case SanitizationMethod::
-        HostOverwrite:
+    case SanitizationMethod::AtaSanitize:
+    {
+        std::cout << "Selected method: ATA Sanitize\n";
+        break;
+    }
 
-        std::cout
-            << "Selected method: "
-               "Host Overwrite\n";
-
+    case SanitizationMethod::HostOverwrite:
+        std::cout << "Selected method: Host Overwrite\n";
         break;
 
-    case SanitizationMethod::
-        Unsupported:
-
-        std::cout
-            << "No supported sanitization "
-               "method found.\n";
-
+    case SanitizationMethod::Unsupported:
+        std::cout << "No supported sanitization method found.\n";
         return false;
     }
 
-    std::cout
-        << "\n[4] Opening sanitization target\n";
+    // --------------------------------------------------
+    // STEP 4: OPEN PHYSICAL DEVICE
+    // --------------------------------------------------
+
+    std::cout << "\n[4] Opening sanitization target\n";
 
     HANDLE deviceHandle =
         CreateFileA(
             device.getDeviceId().c_str(),
-            GENERIC_READ |
-                GENERIC_WRITE,
-            FILE_SHARE_READ |
-                FILE_SHARE_WRITE,
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
             nullptr,
             OPEN_EXISTING,
             0,
             nullptr);
 
-    if (deviceHandle ==
-        INVALID_HANDLE_VALUE)
+    if (deviceHandle == INVALID_HANDLE_VALUE)
     {
-        std::cout
-            << "Failed to open "
-               "sanitization target.\n";
+        std::cout << "Failed to open sanitization target.\n";
 
         std::cout
             << "Windows error: "
@@ -178,88 +170,122 @@ bool SanitizationEngine::sanitize(
         return false;
     }
 
-    std::cout
-        << "Device opened successfully.\n";
+    std::cout << "Device opened successfully.\n";
+
+    // --------------------------------------------------
+    // STEP 5: ACTUAL SANITIZATION
+    // --------------------------------------------------
+
+    std::cout << "\n[5] Executing sanitization\n";
 
     bool result = false;
 
-    if (method ==
-        SanitizationMethod::
-            NativeDeviceSanitize)
+    switch (method)
     {
-        std::cout
-            << "\n[5] Starting native "
-               "NVMe sanitization\n";
+    case SanitizationMethod::NvmeSanitize:
+    {
+        std::cout << "Starting native NVMe sanitization.\n";
 
         NvmeSanitizeMethod nvmeMethod;
 
+        // Select the strongest supported NVMe method.
         if (capability.nvmeCryptoEraseSupported)
         {
             nvmeMethod =
-                NvmeSanitizeMethod::
-                    CryptoErase;
+                NvmeSanitizeMethod::CryptoErase;
 
             std::cout
-                << "NVMe method selected: "
-                   "Crypto Erase\n";
+                << "NVMe algorithm: Crypto Erase\n";
         }
         else if (capability.nvmeBlockEraseSupported)
         {
             nvmeMethod =
-                NvmeSanitizeMethod::
-                    BlockErase;
+                NvmeSanitizeMethod::BlockErase;
 
             std::cout
-                << "NVMe method selected: "
-                   "Block Erase\n";
+                << "NVMe algorithm: Block Erase\n";
         }
         else if (capability.nvmeOverwriteSupported)
         {
             nvmeMethod =
-                NvmeSanitizeMethod::
-                    Overwrite;
+                NvmeSanitizeMethod::Overwrite;
 
             std::cout
-                << "NVMe method selected: "
-                   "Overwrite\n";
+                << "NVMe algorithm: Overwrite\n";
         }
         else
         {
             std::cout
-                << "No supported NVMe "
-                   "sanitize action found.\n";
+                << "No supported NVMe sanitize algorithm found.\n";
 
             CloseHandle(deviceHandle);
-
             return false;
         }
 
-        result =
-            executeNvmeSanitize(
-                deviceHandle,
-                nvmeMethod);
+        result = executeNvmeSanitize(deviceHandle, nvmeMethod);
+
+        break;
     }
-    else if (method ==
-             SanitizationMethod::
-                 HostOverwrite)
+
+    case SanitizationMethod::AtaSanitize:
     {
-        std::cout
-            << "\n[5] Starting host overwrite\n";
+        std::cout << "ATA sanitization Detected";
 
-        result =
-            performOverwrite(
-                deviceHandle,
-                device.getCapacityBytes());
+        AtaSanitizeMethod ataMethod;
+
+        if (capability.atacryptoScrambleSupported)
+        {
+            ataMethod = AtaSanitizeMethod::CryptoScramble;
+            std::cout << "ATA algorithm: Crypto Scramble EXT\n";
+        }
+        else if (capability.atablockEraseSupported)
+        {
+            ataMethod = AtaSanitizeMethod::BlockErase;
+            std::cout << "ATA algorithm: Block Erase EXT\n";
+        }
+        else if (capability.ataoverwriteSupported)
+        {
+            ataMethod = AtaSanitizeMethod::Overwrite;
+            std::cout << "ATA algorithm: Overwrite EXT\n";
+        }
+        else
+        {
+            std::cout << "No supported ATA sanitize algorithm found.\n";
+            result = false;
+            break;
+        }
+
+        result = executeAtaSanitize(deviceHandle, ataMethod);
+        break;
     }
 
-    CloseHandle(
-        deviceHandle);
+    case SanitizationMethod::HostOverwrite:
+    {
+        std::cout << "Starting host overwrite.\n";
+        result = performOverwrite(deviceHandle, device.getCapacityBytes());
+        break;
+    }
+
+    case SanitizationMethod::Unsupported:
+    {
+        result = false;
+        break;
+    }
+    }
+
+    // --------------------------------------------------
+    // STEP 6: CLOSE DEVICE
+    // --------------------------------------------------
+
+    CloseHandle(deviceHandle);
+
+    // --------------------------------------------------
+    // STEP 7: FINAL RESULT
+    // --------------------------------------------------
 
     std::cout
         << "\nSanitization Engine Result: "
-        << (result
-                ? "SUCCESS"
-                : "FAILED")
+        << (result ? "SUCCESS" : "FAILED")
         << '\n';
 
     return result;
