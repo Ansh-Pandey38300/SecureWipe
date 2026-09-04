@@ -5,7 +5,7 @@ project(SecureWipe
     LANGUAGES CXX
 )
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Network Concurrent)
 
 qt_standard_project_setup()
 
@@ -36,14 +36,25 @@ qt_add_executable(SecureWipe
     frontend/services/StorageService.cpp
     frontend/services/StorageService.h
 
+    frontend/services/ForensicService.cpp
+    frontend/services/ForensicService.h
+
     frontend/services/SanitizationRequestService.cpp
     frontend/services/SanitizationRequestService.h
 
     frontend/dialogs/DeviceDetailsDialog.cpp
     frontend/dialogs/DeviceDetailsDialog.h
 
+    frontend/dialogs/ForensicEvidenceDialog.cpp
+    frontend/dialogs/ForensicEvidenceDialog.h
+    frontend/dialogs/ForensicScanDialog.cpp
+    frontend/dialogs/ForensicScanDialog.h
+
     frontend/pages/DeviceDetailsPage.cpp
     frontend/pages/DeviceDetailsPage.h
+
+    frontend/pages/ForensicPage.cpp
+    frontend/pages/ForensicPage.h
 
     frontend/styles/AppTheme.cpp
     frontend/styles/AppTheme.h
@@ -58,6 +69,7 @@ target_include_directories(SecureWipe
         frontend/models
         frontend/services
         frontend/dialogs
+        frontend/pages
 )
 
 target_link_libraries(SecureWipe
@@ -65,6 +77,7 @@ target_link_libraries(SecureWipe
         Qt6::Core
         Qt6::Widgets
         Qt6::Network
+        Qt6::Concurrent
         SecureWipeStorage
 )
 

@@ -16,6 +16,7 @@ class AuthManager;
 class DeviceController;
 class DeviceTableModel;
 class DeviceDetailsPage;
+class ForensicPage;
 class SanitizationRequestService;
 
 class MainWindow : public QMainWindow
@@ -30,8 +31,10 @@ private:
     QString selectedRequestId;
     QString selectedRequestDeviceType;
     QString selectedRequestMethod;
+
     bool waitingForSanitizationStart = false;
     bool sanitizationOperationRunning = false;
+
     Ui::MainWindow *ui;
 
     AuthManager *authManager;
@@ -41,6 +44,7 @@ private:
     DeviceTableModel *deviceTableModel;
 
     DeviceDetailsPage *deviceDetailsPage;
+    ForensicPage *forensicPage;
 
     QPushButton *refreshDevicesButton;
 
@@ -59,6 +63,7 @@ private:
     void showDevicesPage();
 
     void hideDeviceDetailsPage();
+
     void logout();
 };
 

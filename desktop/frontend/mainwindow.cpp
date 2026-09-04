@@ -5,6 +5,7 @@
 #include "controllers/DeviceController.h"
 #include "models/DeviceTableModel.h"
 #include "pages/DeviceDetailsPage.h"
+#include "pages/ForensicPage.h"
 
 #include "ui_mainwindow.h"
 #include "services/SanitizationRequestService.h"
@@ -89,6 +90,7 @@ MainWindow::MainWindow(QWidget *parent)
     , deviceController(new DeviceController(this))
     , deviceTableModel(new DeviceTableModel(this))
     , deviceDetailsPage(nullptr)
+    , forensicPage(nullptr)
     , refreshDevicesButton(nullptr)
 {
     ui->setupUi(this);
@@ -249,6 +251,34 @@ MainWindow::MainWindow(QWidget *parent)
      */
 
     setupDevicesPage();
+
+    /*
+     * =========================================================
+     * Forensics Page
+     * =========================================================
+     *
+     * The existing Reports placeholder is reused so the current
+     * desktop shell, navigation spacing and overall UI structure
+     * remain unchanged.
+     */
+
+    ui->reportsPlaceholderLabel->hide();
+    ui->reportsNavButton->setText(QStringLiteral("Forensics"));
+
+    forensicPage =
+        new ForensicPage(
+            deviceController,
+            ui->reportsPage
+        );
+
+    if (auto *reportsLayout =
+            qobject_cast<QVBoxLayout *>(
+                ui->reportsPage->layout()))
+    {
+        reportsLayout->setContentsMargins(0, 0, 0, 0);
+        reportsLayout->setSpacing(0);
+        reportsLayout->addWidget(forensicPage);
+    }
 
 
     /*

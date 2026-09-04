@@ -11,11 +11,13 @@
 class SanitizationEngine
 {
 private:
-    SanitizationMethod selectMethod(const SanitizationCapability &capability) const;
-
     bool performOverwrite(HANDLE deviceHandle, std::uint64_t totalBytes);
 
 public:
+    SanitizationMethod selectMethod(
+        const StorageDevice &device,
+        const SanitizationCapability &capability) const;
+        
     bool canSanitize(const StorageDevice &device, const SafetyResult &safetyResult);
 
     bool sanitize(const StorageDevice &device, const SafetyResult &safetyResult);
