@@ -1,16 +1,35 @@
+
 #include "SanitizationEngine.h"
+
 #include "NvmeSanitizer.h"
 #include "HostOverwriteSanitizer.h"
 #include "AtaSanitizer.h"
 
 #include <iostream>
+#include <chrono>
 
-bool SanitizationEngine::performOverwrite(
+using SecureWipe::SanitizationErrorCode;
+using SecureWipe::SanitizationResult;
+using SecureWipe::SanitizationStatus;
+using SecureWipe::VerificationStatus;
+
+VerificationResult SanitizationEngine::performOverwrite(
     HANDLE deviceHandle,
     std::uint64_t totalBytes)
 {
-    if (deviceHandle == INVALID_HANDLE_VALUE || totalBytes == 0)
-        return false;
+    VerificationResult result;
+
+    if (deviceHandle == INVALID_HANDLE_VALUE)
+    {
+        result.message = "Invalid device handle.";
+        return result;
+    }
+
+    if (totalBytes == 0)
+    {
+        result.message = "Device capacity is zero.";
+        return result;
+    }
 
     HostOverwriteSanitizer sanitizer;
     return sanitizer.sanitize(deviceHandle, totalBytes);
@@ -55,9 +74,7 @@ SanitizationMethod SanitizationEngine::selectMethod(const StorageDevice &device,
     return SanitizationMethod::Unsupported;
 }
 
-bool SanitizationEngine::canSanitize(
-    const StorageDevice &device,
-    const SafetyResult &safetyResult)
+bool SanitizationEngine::canSanitize(const StorageDevice &device, const SafetyResult &safetyResult)
 {
     if (!safetyResult.isOverallSafe)
     {
@@ -80,10 +97,19 @@ bool SanitizationEngine::canSanitize(
     return true;
 }
 
-bool SanitizationEngine::sanitize(
-    const StorageDevice &device,
-    const SafetyResult &safetyResult)
+SanitizationResult SanitizationEngine::sanitize(const StorageDevice &device, const SafetyResult &safetyResult)
 {
+    SanitizationResult result;
+
+    result.deviceId = device.getDeviceId();
+    result.model = device.getModel();
+    result.serialNumber = device.getSerialNumber();
+    result.interfaceType = device.getInterfaceType();
+    result.capacityBytes = device.getCapacityBytes();
+
+    result.status = SanitizationStatus::IN_PROGRESS;
+    result.verificationStatus = VerificationStatus::NOT_PERFORMED;
+
     std::cout
         << "\n========================================\n"
         << " Sanitization Engine\n"
@@ -97,10 +123,14 @@ bool SanitizationEngine::sanitize(
 
     if (!canSanitize(device, safetyResult))
     {
-        std::cout
-            << "Device failed sanitization safety checks.\n";
+        result.status = SanitizationStatus::FAILED;
+        result.error = SanitizationErrorCode::SAFETY_VALIDATION_FAILED;
+        result.message = "Device failed sanitization safety checks.";
+        result.errorMessage = result.message;
 
-        return false;
+        std::cout << result.message << '\n';
+
+        return result;
     }
 
     std::cout << "Safety validation PASSED.\n";
@@ -128,10 +158,8 @@ bool SanitizationEngine::sanitize(
         break;
 
     case SanitizationMethod::AtaSanitize:
-    {
         std::cout << "Selected method: ATA Sanitize\n";
         break;
-    }
 
     case SanitizationMethod::HostOverwrite:
         std::cout << "Selected method: Host Overwrite\n";
@@ -139,7 +167,7 @@ bool SanitizationEngine::sanitize(
 
     case SanitizationMethod::Unsupported:
         std::cout << "No supported sanitization method found.\n";
-        return false;
+        break;
     }
 
     // --------------------------------------------------
@@ -160,25 +188,27 @@ bool SanitizationEngine::sanitize(
 
     if (deviceHandle == INVALID_HANDLE_VALUE)
     {
-        std::cout << "Failed to open sanitization target.\n";
+        result.status = SanitizationStatus::FAILED;
+        result.error = SanitizationErrorCode::DEVICE_OPEN_FAILED;
+        result.nativeErrorCode =
+            static_cast<std::uint32_t>(GetLastError());
 
-        std::cout
-            << "Windows error: "
-            << GetLastError()
-            << '\n';
+        result.errorMessage = "Failed to open sanitization target.";
+        result.message = result.errorMessage;
 
-        return false;
+        return result;
     }
 
     std::cout << "Device opened successfully.\n";
 
+    const auto startTime = std::chrono::steady_clock::now();
     // --------------------------------------------------
     // STEP 5: ACTUAL SANITIZATION
     // --------------------------------------------------
 
     std::cout << "\n[5] Executing sanitization\n";
 
-    bool result = false;
+    bool executionResult = false;
 
     switch (method)
     {
@@ -215,14 +245,17 @@ bool SanitizationEngine::sanitize(
         }
         else
         {
-            std::cout
-                << "No supported NVMe sanitize algorithm found.\n";
+            std::cout << "No supported NVMe sanitize algorithm found.\n";
+            result.status = SanitizationStatus::FAILED;
+            result.error = SanitizationErrorCode::NVME_ALGORITHM_UNAVAILABLE;
+            result.message = "No supported NVMe sanitize algorithm found.";
+            result.errorMessage = result.message;
 
             CloseHandle(deviceHandle);
-            return false;
+            return result;
         }
 
-        result = executeNvmeSanitize(deviceHandle, nvmeMethod);
+        executionResult = executeNvmeSanitize(deviceHandle, nvmeMethod);
 
         break;
     }
@@ -251,27 +284,46 @@ bool SanitizationEngine::sanitize(
         else
         {
             std::cout << "No supported ATA sanitize algorithm found.\n";
-            result = false;
-            break;
+            result.status = SanitizationStatus::FAILED;
+            result.error = SanitizationErrorCode::ATA_ALGORITHM_UNAVAILABLE;
+            result.message = "No supported ATA sanitize algorithm found.";
+            result.errorMessage = result.message;
+
+            return result;
         }
 
-        result = executeAtaSanitize(deviceHandle, ataMethod);
+        executionResult = executeAtaSanitize(deviceHandle, ataMethod);
         break;
     }
 
-    case SanitizationMethod::HostOverwrite:
-    {
-        std::cout << "Starting host overwrite.\n";
-        result = performOverwrite(deviceHandle, device.getCapacityBytes());
-        break;
-    }
+case SanitizationMethod::HostOverwrite:
+{
+    std::cout << "Starting host overwrite.\n";
+
+    verificationResult =
+        performOverwrite(
+            deviceHandle,
+            device.getCapacityBytes());
+
+    executionResult = verificationResult.passed;
+
+    break;
+}
 
     case SanitizationMethod::Unsupported:
-    {
-        result = false;
-        break;
+        result.status = SanitizationStatus::FAILED;
+        result.error = SanitizationErrorCode::UNSUPPORTED_SANITIZATION_METHOD;
+        result.message = "No supported sanitization method found.";
+        result.errorMessage = result.message;
+
+        std::cout << result.message << '\n';
+
+        return result;
     }
-    }
+
+    const auto endTime = std::chrono::steady_clock::now();
+
+    result.operationDurationMs = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count());
 
     // --------------------------------------------------
     // STEP 6: CLOSE DEVICE
@@ -283,9 +335,55 @@ bool SanitizationEngine::sanitize(
     // STEP 7: FINAL RESULT
     // --------------------------------------------------
 
+    if (method == SanitizationMethod::HostOverwrite)
+{
+    result.verificationPerformed =
+        verificationResult.performed;
+
+    result.verificationStatus =
+        verificationResult.performed
+            ? (verificationResult.passed
+                   ? VerificationStatus::PASSED
+                   : VerificationStatus::FAILED)
+            : VerificationStatus::NOT_PERFORMED;
+
+    result.bytesVerified =
+        verificationResult.bytesVerified;
+
+    result.verificationSamples =
+        verificationResult.samples;
+
+    result.verificationMessage =
+        verificationResult.message;
+}
+
+    if (executionResult)
+    {
+        result.status = SanitizationStatus::COMPLETED;
+        result.bytesProcessed = device.getCapacityBytes();
+        result.message = "Sanitization completed successfully.";
+    }
+    else
+    {
+        result.status = SanitizationStatus::FAILED;
+
+        if (result.error == SanitizationErrorCode::NONE)
+        {
+            result.error =
+                SanitizationErrorCode::SANITIZATION_EXECUTION_FAILED;
+        }
+
+        if (result.message.empty())
+        {
+            result.message = "Sanitization execution failed.";
+        }
+
+        result.errorMessage = result.message;
+    }
+
     std::cout
         << "\nSanitization Engine Result: "
-        << (result ? "SUCCESS" : "FAILED")
+        << (executionResult ? "SUCCESS" : "FAILED")
         << '\n';
 
     return result;

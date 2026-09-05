@@ -4,9 +4,17 @@
 #include <iostream>
 #include <vector>
 
-bool HostOverwriteSanitizer::verify(HANDLE deviceHandle, std::uint64_t totalBytes)
+VerificationResult HostOverwriteSanitizer::verify(
+    HANDLE deviceHandle,
+    std::uint64_t totalBytes)
 {
+    VerificationResult result;
+
     constexpr std::size_t VERIFY_SIZE = 4096;
+
+    result.performed = true;
+    result.samples = 5;
+
     std::vector<std::uint8_t> buffer(VERIFY_SIZE);
 
     const std::uint64_t offsets[] = {
@@ -22,24 +30,57 @@ bool HostOverwriteSanitizer::verify(HANDLE deviceHandle, std::uint64_t totalByte
         position.QuadPart = static_cast<LONGLONG>(offset);
 
         if (!SetFilePointerEx(deviceHandle, position, nullptr, FILE_BEGIN))
-            return false;
+        {
+            result.passed = false;
+            result.message = "Verification failed: unable to seek to verification offset.";
+            return result;
+        }
 
         DWORD bytesRead = 0;
 
-        if (!ReadFile(deviceHandle, buffer.data(), VERIFY_SIZE, &bytesRead, nullptr))
-            return false;
+        if (!ReadFile(
+                deviceHandle,
+                buffer.data(),
+                VERIFY_SIZE,
+                &bytesRead,
+                nullptr))
+        {
+            result.passed = false;
+            result.message = "Verification failed: unable to read verification data.";
+            return result;
+        }
 
         if (bytesRead != VERIFY_SIZE)
-            return false;
+        {
+            result.passed = false;
+            result.message = "Verification failed: incomplete verification read.";
+            return result;
+        }
 
-        if (!std::all_of(buffer.begin(), buffer.end(),
-                         [](std::uint8_t value)
-                         { return value == 0x00; }))
-            return false;
+        result.bytesVerified += bytesRead;
+
+        if (!std::all_of(
+                buffer.begin(),
+                buffer.end(),
+                [](std::uint8_t value)
+                {
+                    return value == 0x00;
+                }))
+        {
+            result.passed = false;
+            result.message =
+                "Verification failed: non-zero data detected.";
+            return result;
+        }
     }
 
-    std::cout << "Host overwrite verification passed.\n";
-    return true;
+    result.passed = true;
+    result.message =
+        "Host overwrite verification passed.";
+
+    std::cout << result.message << '\n';
+
+    return result;
 }
 
 bool HostOverwriteSanitizer::overwrite(HANDLE deviceHandle, std::uint64_t totalBytes)
@@ -76,16 +117,39 @@ bool HostOverwriteSanitizer::overwrite(HANDLE deviceHandle, std::uint64_t totalB
     return true;
 }
 
-bool HostOverwriteSanitizer::sanitize(HANDLE deviceHandle, std::uint64_t totalBytes)
+VerificationResult HostOverwriteSanitizer::sanitize(
+    HANDLE deviceHandle,
+    std::uint64_t totalBytes)
 {
-    if (deviceHandle == INVALID_HANDLE_VALUE || totalBytes == 0)
-        return false;
+    VerificationResult result;
+
+    if (deviceHandle == INVALID_HANDLE_VALUE)
+    {
+        result.message =
+            "Sanitization failed: invalid device handle.";
+        return result;
+    }
+
+    if (totalBytes == 0)
+    {
+        result.message =
+            "Sanitization failed: device capacity is zero.";
+        return result;
+    }
 
     if (!overwrite(deviceHandle, totalBytes))
-        return false;
+    {
+        result.message =
+            "Sanitization failed: host overwrite failed.";
+        return result;
+    }
 
     if (!FlushFileBuffers(deviceHandle))
-        return false;
+    {
+        result.message =
+            "Sanitization failed: unable to flush device buffers.";
+        return result;
+    }
 
     return verify(deviceHandle, totalBytes);
 }
