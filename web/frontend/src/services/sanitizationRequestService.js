@@ -1,5 +1,4 @@
 import { apiRequest } from "./api";
-
 export const getAllSanitizationRequests =
     async () => {
 
