@@ -7,18 +7,20 @@
 #include "../../safety/include/SafetyResult.h"
 #include "SanitizationMethod.h"
 #include "SanitizationCapability.h"
+#include "SanitizationResult.h"
+#include "HostOverwriteSanitizer.h"
 
 class SanitizationEngine
 {
 private:
-    bool performOverwrite(HANDLE deviceHandle, std::uint64_t totalBytes);
+    VerificationResult performOverwrite(HANDLE deviceHandle, std::uint64_t totalBytes);
 
 public:
     SanitizationMethod selectMethod(
         const StorageDevice &device,
         const SanitizationCapability &capability) const;
-        
+
     bool canSanitize(const StorageDevice &device, const SafetyResult &safetyResult);
 
-    bool sanitize(const StorageDevice &device, const SafetyResult &safetyResult);
+    SanitizationResult sanitize(const StorageDevice &device, const SafetyResult &safetyResult);
 };

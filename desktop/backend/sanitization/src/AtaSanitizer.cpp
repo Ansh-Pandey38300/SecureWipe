@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <Ntddscsi.h>
 #include <iostream>
+#include "VerificationResult.h"
 
 namespace
 {
@@ -15,10 +16,18 @@ namespace
     constexpr UCHAR ATA_STATUS_BSY = 0x80;
 }
 
-bool checkSanitizeStatus(HANDLE deviceHandle)
+VerificationResult checkSanitizeStatus(HANDLE deviceHandle)
 {
+    VerificationResult result;
+
+    result.performed = true;
+
     if (deviceHandle == INVALID_HANDLE_VALUE)
-        return false;
+    {
+        result.message =
+            "ATA SANITIZE verification failed: invalid device handle.";
+        return result;
+    }
 
     ATA_PASS_THROUGH_DIRECT command{};
 
@@ -52,7 +61,11 @@ bool checkSanitizeStatus(HANDLE deviceHandle)
             << "ATA SANITIZE STATUS failed. Windows error: "
             << GetLastError() << '\n';
 
-        return false;
+        result.passed = false;
+        result.message =
+            "ATA SANITIZE status command failed.";
+
+        return result;
     }
 
     const UCHAR status = command.CurrentTaskFile[6];
@@ -60,17 +73,33 @@ bool checkSanitizeStatus(HANDLE deviceHandle)
     if (status & ATA_STATUS_ERR)
     {
         std::cout << "ATA SANITIZE STATUS returned error.\n";
-        return false;
+
+        result.passed = false;
+        result.message =
+            "ATA SANITIZE status reported a device error.";
+
+        return result;
     }
 
     if (status & ATA_STATUS_BSY)
     {
-        std::cout << "ATA SANITIZE operation is still running.\n";
-        return false;
+        std::cout
+            << "ATA SANITIZE operation is still running.\n";
+
+        result.passed = false;
+        result.message =
+            "ATA SANITIZE operation is still running.";
+
+        return result;
     }
 
-    std::cout << "ATA SANITIZE status command completed.\n";
-    return true;
+    result.passed = true;
+    result.message =
+        "ATA SANITIZE status verification passed.";
+
+    std::cout << result.message << '\n';
+
+    return result;
 }
 
 bool sendSanitizeCommand(HANDLE deviceHandle, AtaSanitizeMethod method)
@@ -149,17 +178,30 @@ bool sendSanitizeCommand(HANDLE deviceHandle, AtaSanitizeMethod method)
     return true;
 }
 
-bool executeAtaSanitize(HANDLE deviceHandle, AtaSanitizeMethod method)
+VerificationResult executeAtaSanitize(
+    HANDLE deviceHandle,
+    AtaSanitizeMethod method)
 {
+    VerificationResult result;
+
     if (deviceHandle == INVALID_HANDLE_VALUE)
-        return false;
+    {
+        result.message =
+            "ATA SANITIZE failed: invalid device handle.";
+        return result;
+    }
 
     std::cout << "\nStarting ATA SANITIZE...\n";
 
     if (!sendSanitizeCommand(deviceHandle, method))
-        return false;
+    {
+        result.message =
+            "ATA SANITIZE command execution failed.";
+        return result;
+    }
 
-    std::cout << "ATA SANITIZE command sent successfully.\n";
+    std::cout
+        << "ATA SANITIZE command sent successfully.\n";
 
     return checkSanitizeStatus(deviceHandle);
 }
